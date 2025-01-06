@@ -46,6 +46,7 @@ export interface Database {
           quantity: number
           budget: number
           status: 'pending' | 'approved' | 'rejected' | 'fulfilled'
+          notes: string | null
           created_at: string
           updated_at: string
         }
@@ -78,7 +79,7 @@ export interface Database {
           id: string
           request_id: string
           supplier_id: string
-          price: number
+          price: number | null
           notes: string | null
           created_at: string
         }
@@ -96,4 +97,14 @@ export interface Database {
       [_ in never]: never
     }
   }
-} 
+}
+
+// Helper types
+export type TableRow<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Row']
+
+export type TableInsert<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Insert']
+
+export type TableUpdate<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Update'] 

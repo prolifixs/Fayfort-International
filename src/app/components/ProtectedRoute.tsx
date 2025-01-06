@@ -2,26 +2,54 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import LoadingSpinner from './LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'customer' | 'supplier';
+  allowedRoles?: ('admin' | 'customer' | 'supplier')[];
 }
 
-export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { user, loading: isLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
+  const checkUserRole = (user: any) => {
+    // Check user_metadata first
+    const metadataRole = user.user_metadata?.role;
+    if (metadataRole) return metadataRole;
 
-    if (!isLoading && user && requiredRole && user.role !== requiredRole) {
-      router.push('/unauthorized');
-    }
-  }, [user, isLoading, router, requiredRole]);
+    // Check the main role field
+    const mainRole = user.role;
+    if (mainRole && mainRole !== 'authenticated') return mainRole;
+
+    // If no valid role found, return null or a default
+    return null;
+  };
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!isLoading) {
+        if (!user) {
+          router.push('/login');
+          return;
+        }
+
+        const userRole = checkUserRole(user);
+        console.log('Current user role:', userRole); // Debug log
+
+        if (allowedRoles && !allowedRoles.includes(userRole)) {
+          console.log('Access denied:', {
+            userRole,
+            allowedRoles,
+            metadata: user.user_metadata
+          });
+          router.push('/unauthorized');
+        }
+      }
+    };
+
+    checkAccess();
+  }, [user, isLoading, router, allowedRoles]);
 
   if (isLoading) {
     return (
@@ -31,7 +59,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     );
   }
 
-  if (!user || (requiredRole && user.role !== requiredRole)) {
+  if (!user) {
     return null;
   }
 

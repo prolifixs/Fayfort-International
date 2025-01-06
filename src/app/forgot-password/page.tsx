@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import LoadingSpinner from '../components/lib/LoadingSpinner';
 import { emailService } from '@/services/emailService';
 import { tokenService } from '@/services/tokenService';
 import { rateLimiterService } from '@/services/rateLimiterService';

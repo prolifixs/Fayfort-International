@@ -1,17 +1,111 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
-import { requests, users, products } from '@/app/components/data/dummy';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface DashboardStats {
+  totalUsers: number;
+  activeProducts: number;
+  pendingRequests: number;
+  totalCategories: number;
+  recentRequests: any[]; // We'll type this properly later
+}
 
 export default function AdminDashboard() {
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    activeProducts: 0,
+    pendingRequests: 0,
+    totalCategories: 0,
+    recentRequests: []
+  });
+  
+  const supabase = createClientComponentClient();
+
+  // Fetch initial data
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    const requestsSubscription = supabase
+      .channel('requests-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'requests' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    const productsSubscription = supabase
+      .channel('products-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    const usersSubscription = supabase
+      .channel('users-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    return () => {
+      requestsSubscription.unsubscribe();
+      productsSubscription.unsubscribe();
+      usersSubscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  async function fetchDashboardData() {
+    try {
+      const [
+        { data: users },
+        { data: products },
+        { data: requests },
+        { data: recentRequests }
+      ] = await Promise.all([
+        supabase.from('users').select('count'),
+        supabase.from('products').select('count').eq('availability', true),
+        supabase.from('requests').select('count').eq('status', 'pending'),
+        supabase.from('requests')
+          .select(`
+            id,
+            status,
+            created_at,
+            customer_id,
+            product_details:products (*)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(5)
+      ]);
+
+      setStats({
+        totalUsers: users?.[0]?.count || 0,
+        activeProducts: products?.[0]?.count || 0,
+        pendingRequests: requests?.[0]?.count || 0,
+        totalCategories: 0,
+        recentRequests: recentRequests || []
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   // Calculate summary statistics from dummy data
-  const totalUsers = users.length;
-  const activeProducts = products.filter(product => product.availability).length;
-  const pendingRequests = requests.filter(request => request.status === 'pending').length;
-  const totalCategories = [...new Set(products.map(product => product.category))].length;
+  const totalUsers = stats.totalUsers;
+  const activeProducts = stats.activeProducts;
+  const pendingRequests = stats.pendingRequests;
+  const totalCategories = stats.totalCategories;
 
   return (
     <div className="space-y-6">
@@ -42,7 +136,7 @@ export default function AdminDashboard() {
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <h2 className="text-xl font-semibold mb-2">Recent Activity</h2>
           <div className="space-y-3">
-            {requests.slice(0, 3).map(request => (
+            {stats.recentRequests.slice(0, 3).map(request => (
               <div key={request.id} className="text-sm">
                 <p className="text-gray-600">
                   New request for {request.product_details.name}
@@ -104,7 +198,7 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {requests.slice(0, 5).map((request) => (
+              {stats.recentRequests.slice(0, 5).map((request) => (
                 <tr key={request.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">Customer #{request.customer_id}</div>

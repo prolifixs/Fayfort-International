@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import ProductFormModal from '@/app/components/ProductFormModal';
 import { products as mockProducts } from '@/app/components/data/dummy';
 
