@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { RequestStatus } from '@/services/statusService';
+import { RequestStatus } from '@/app/components/types/request.types';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 

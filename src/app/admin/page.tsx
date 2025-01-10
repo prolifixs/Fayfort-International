@@ -5,6 +5,7 @@ import Link from 'next/link';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/AuthContext';
+import StatisticsChart from '../components/charts/StatisticsChart';
 
 interface DashboardStats {
   totalUsers: number;
@@ -12,6 +13,16 @@ interface DashboardStats {
   pendingRequests: number;
   totalCategories: number;
   recentRequests: any[]; // We'll type this properly later
+}
+
+interface ChartData {
+  requestsOverTime: number[];
+  userGrowth: number[];
+  productDistribution: number[];
+  revenueData: number[];
+  labels: string[];
+  categoryLabels: string[];
+  revenueLabels: string[];
 }
 
 export default function AdminDashboard() {
@@ -23,6 +34,16 @@ export default function AdminDashboard() {
     totalCategories: 0,
     recentRequests: []
   });
+  const [chartData, setChartData] = useState<ChartData>({
+    requestsOverTime: [],
+    userGrowth: [],
+    productDistribution: [],
+    revenueData: [],
+    labels: [],
+    categoryLabels: [],
+    revenueLabels: []
+  });
+  const [filterRange, setFilterRange] = useState<'week' | 'month' | 'year'>('week');
   
   const supabase = createClientComponentClient();
 
@@ -67,31 +88,44 @@ export default function AdminDashboard() {
   async function fetchDashboardData() {
     try {
       const [
-        { data: users },
-        { data: products },
-        { data: requests },
+        { count: userCount },
+        { count: productCount },
+        { count: requestCount },
+        { data: categories },
         { data: recentRequests }
       ] = await Promise.all([
-        supabase.from('users').select('count'),
-        supabase.from('products').select('count').eq('availability', true),
-        supabase.from('requests').select('count').eq('status', 'pending'),
+        supabase.from('users').select('*', { count: 'exact', head: true }),
+        supabase.from('products').select('*', { count: 'exact', head: true }).eq('availability', true),
+        supabase.from('requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('products')
+          .select('category', { count: 'exact', head: false })
+          .not('category', 'is', null),
         supabase.from('requests')
           .select(`
             id,
             status,
             created_at,
+            quantity,
             customer_id,
-            product_details:products (*)
+            product_id,
+            users!customer_id (
+              email
+            ),
+            product:products (
+              name
+            )
           `)
           .order('created_at', { ascending: false })
           .limit(5)
       ]);
 
+      console.log('Recent Requests:', recentRequests);
+
       setStats({
-        totalUsers: users?.[0]?.count || 0,
-        activeProducts: products?.[0]?.count || 0,
-        pendingRequests: requests?.[0]?.count || 0,
-        totalCategories: 0,
+        totalUsers: userCount || 0,
+        activeProducts: productCount || 0,
+        pendingRequests: requestCount || 0,
+        totalCategories: categories?.length || 0,
         recentRequests: recentRequests || []
       });
     } catch (error) {
@@ -100,6 +134,86 @@ export default function AdminDashboard() {
       setIsLoading(false);
     }
   }
+
+  const handleFilterChange = async (range: string) => {
+    setFilterRange(range as 'week' | 'month' | 'year');
+    await fetchChartData(range as 'week' | 'month' | 'year');
+  };
+
+  const fetchChartData = async (range: 'week' | 'month' | 'year' = 'week') => {
+    try {
+      const supabase = createClientComponentClient();
+      
+      // Calculate date range
+      const daysToFetch = range === 'week' ? 7 : range === 'month' ? 30 : 365;
+      const dates = Array.from({length: daysToFetch}, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        return d.toISOString().split('T')[0];
+      }).reverse();
+
+      // Fetch all required data
+      const [requestsData, usersData, productsData, revenueData] = await Promise.all([
+        supabase
+          .from('requests')
+          .select('created_at')
+          .gte('created_at', dates[0]),
+        
+        supabase
+          .from('profiles')
+          .select('created_at')
+          .gte('created_at', dates[0]),
+        
+        supabase
+          .from('products')
+          .select('category'),
+        
+        supabase
+          .from('requests')
+          .select('created_at, total_amount')
+          .gte('created_at', dates[0])
+          .eq('status', 'completed')
+      ]);
+
+      // Process data for charts
+      const requestsPerDay = dates.map(date => 
+        requestsData.data?.filter(r => r.created_at.startsWith(date)).length || 0
+      );
+
+      const usersPerDay = dates.map(date => 
+        usersData.data?.filter(u => u.created_at.startsWith(date)).length || 0
+      );
+
+      // Process category distribution
+      const categories = productsData.data?.reduce((acc: any, product) => {
+        acc[product.category] = (acc[product.category] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Process revenue data
+      const revenuePerDay = dates.map(date => 
+        revenueData.data?.filter(r => r.created_at.startsWith(date))
+          .reduce((sum, r) => sum + (r.total_amount || 0), 0) || 0
+      );
+
+      setChartData({
+        requestsOverTime: requestsPerDay,
+        userGrowth: usersPerDay,
+        productDistribution: Object.values(categories || {}),
+        revenueData: revenuePerDay,
+        labels: dates.map(d => new Date(d).toLocaleDateString()),
+        categoryLabels: Object.keys(categories || {}),
+        revenueLabels: dates.map(d => new Date(d).toLocaleDateString())
+      });
+
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchChartData();
+  }, []);
 
   // Calculate summary statistics from dummy data
   const totalUsers = stats.totalUsers;
@@ -136,10 +250,10 @@ export default function AdminDashboard() {
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <h2 className="text-xl font-semibold mb-2">Recent Activity</h2>
           <div className="space-y-3">
-            {stats.recentRequests.slice(0, 3).map(request => (
+            {stats.recentRequests.slice(0, 3).map((request) => (
               <div key={request.id} className="text-sm">
                 <p className="text-gray-600">
-                  New request for {request.product_details.name}
+                  New request for {request.products?.name || 'Unknown Product'}
                   <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                     request.status === 'approved' ? 'bg-green-100 text-green-800' : 
@@ -174,6 +288,52 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <StatisticsChart
+            type="line"
+            title="Requests Over Time"
+            data={chartData.requestsOverTime}
+            labels={chartData.labels}
+            colorScheme="ocean"
+            filterRange={filterRange}
+            onFilterChange={handleFilterChange}
+          />
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <StatisticsChart
+            type="line"
+            title="User Growth"
+            data={chartData.userGrowth}
+            labels={chartData.labels}
+            colorScheme="forest"
+            filterRange={filterRange}
+            onFilterChange={handleFilterChange}
+          />
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <StatisticsChart
+            type="pie"
+            title="Product Distribution by Category"
+            data={chartData.productDistribution}
+            labels={chartData.categoryLabels}
+            colorScheme="sunset"
+          />
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <StatisticsChart
+            type="bar"
+            title="Revenue Analytics"
+            data={chartData.revenueData}
+            labels={chartData.revenueLabels}
+            colorScheme="default"
+            filterRange={filterRange}
+            onFilterChange={handleFilterChange}
+          />
+        </div>
+      </div>
+
       {/* Recent Requests Table */}
       <div className="bg-white shadow-sm rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
@@ -198,20 +358,21 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {stats.recentRequests.slice(0, 5).map((request) => (
+              {stats.recentRequests.map((request) => (
                 <tr key={request.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">Customer #{request.customer_id}</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {request.users?.email || 'Unknown User'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{request.product_details.name}</div>
-                    <div className="text-sm text-gray-500">Qty: {request.product_details.quantity}</div>
+                    <div className="text-sm text-gray-900">{request.product?.name || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">Qty: {request.quantity || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                       request.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                      request.status === 'fulfilled' ? 'bg-green-100 text-green-800' :
                       'bg-red-100 text-red-800'
                     }`}>
                       {request.status}

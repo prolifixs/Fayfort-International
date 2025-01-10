@@ -1,67 +1,50 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/app/components/lib/supabase';
 import LoadingSpinner from './LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('admin' | 'customer' | 'supplier')[];
+  allowedRoles: string[];
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, loading: isLoading } = useAuth();
   const router = useRouter();
-
-  const checkUserRole = (user: any) => {
-    // Check user_metadata first
-    const metadataRole = user.user_metadata?.role;
-    if (metadataRole) return metadataRole;
-
-    // Check the main role field
-    const mainRole = user.role;
-    if (mainRole && mainRole !== 'authenticated') return mainRole;
-
-    // If no valid role found, return null or a default
-    return null;
-  };
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkAccess = async () => {
-      if (!isLoading) {
-        if (!user) {
+    async function checkAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
           router.push('/login');
           return;
         }
 
-        const userRole = checkUserRole(user);
-        console.log('Current user role:', userRole); // Debug log
-
-        if (allowedRoles && !allowedRoles.includes(userRole)) {
-          console.log('Access denied:', {
-            userRole,
-            allowedRoles,
-            metadata: user.user_metadata
-          });
+        const userRole = session.user.user_metadata?.role;
+        if (!allowedRoles.includes(userRole)) {
           router.push('/unauthorized');
+          return;
         }
-      }
-    };
 
-    checkAccess();
-  }, [user, isLoading, router, allowedRoles]);
+        setIsAuthorized(true);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        router.push('/login');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    checkAuth();
+  }, [router, allowedRoles]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner className="w-8 h-8" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
-  if (!user) {
-    return null;
-  }
-
-  return <>{children}</>;
+  return isAuthorized ? children : null;
 } 

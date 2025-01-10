@@ -1,14 +1,21 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Session, User } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
+import { WeakPassword } from '@supabase/supabase-js';
+import { supabase, getRedirectUrl } from '@/app/components/lib/supabase';
+
 
 interface AuthContextType {
   user: any;
   session: any;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{
+    user: User;
+    session: Session;
+    weakPassword?: WeakPassword;
+  }>;
   signUp: (email: string, password: string, role: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -17,27 +24,33 @@ interface AuthContextType {
   isEmailVerified: boolean;
   resendVerificationEmail: (email: string) => Promise<void>;
   verifyEmail: (token: string, email: string) => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const getRedirectUrl = () => {
-  return `${window.location.origin}/auth/callback`;
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+
+  // Add debug logging
+  const debugAuth = (message: string, data?: any) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔐 Auth Debug: ${message}`, data || '');
+    }
+  };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    debugAuth('Attempting sign in', { email });
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) throw error;
+    debugAuth('Sign in successful', { user: data.user });
+    return data;
   };
 
   const signUp = async (email: string, password: string, role: string, name: string) => {
@@ -60,22 +73,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
+  const refreshSession = async () => {
+    const { data: { session }, error } = await supabase.auth.refreshSession();
+    if (error) {
+      console.error('Error refreshing session:', error);
+      return;
+    }
+    
+    // Force reload user metadata
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      console.error('Error getting user:', userError);
+      return;
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
+      debugAuth('Initializing auth');
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        debugAuth('Got session', { session });
+        
         if (session) {
           setSession(session);
           setUser(session.user);
-          
-          // Redirect based on role
-          const userRole = session.user.user_metadata?.role;
-          if (!window.location.pathname.includes('/auth/callback')) {
-            router.push(userRole === 'admin' ? '/admin' : '/dashboard');
-          }
+          debugAuth('Session exists, user set', { 
+            user: session.user,
+            role: session.user.user_metadata?.role 
+          });
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        debugAuth('Auth initialization error', error);
       } finally {
         setLoading(false);
       }
@@ -85,18 +114,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        debugAuth('Auth state changed', { event, session });
+        if (event === 'SIGNED_IN') {
+          setSession(session);
+          setUser(session?.user ?? null);
+          // Don't set loading to false immediately on sign in
+          // Let the redirect happen first
+          return;
+        }
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-
-        if (event === 'SIGNED_IN') {
-          const userRole = session?.user?.user_metadata?.role;
-          router.push(userRole === 'admin' ? '/admin' : '/dashboard');
-        }
       }
     );
 
     return () => {
+      debugAuth('Cleaning up auth subscription');
       subscription.unsubscribe();
     };
   }, [router, supabase]);
@@ -142,7 +175,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email
         });
         if (error) throw error;
-      }
+      },
+      refreshSession
     }),
     [user, session, loading, router]
   );

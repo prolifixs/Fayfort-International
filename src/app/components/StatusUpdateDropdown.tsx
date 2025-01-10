@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { RequestStatus, statusService } from '@/services/statusService';
+import { RequestStatus } from '@/app/components/types/request.types';
+import { statusService } from '@/services/statusService';
 
 interface StatusUpdateDropdownProps {
   requestId: string;
   currentStatus: RequestStatus;
-  onStatusUpdate: (newStatus: RequestStatus) => void;
+  onStatusUpdate: (newStatus: 'approved' | 'rejected') => void;
 }
 
 export default function StatusUpdateDropdown({
@@ -19,10 +20,9 @@ export default function StatusUpdateDropdown({
 
   const statusOptions: RequestStatus[] = [
     'pending',
-    'in_progress',
-    'completed',
+    'approved',
     'rejected',
-    'cancelled'
+    'fulfilled'
   ];
 
   const handleStatusChange = async (newStatus: RequestStatus) => {
@@ -39,13 +39,8 @@ export default function StatusUpdateDropdown({
       statusService.getStatusColor(status).includes(currentStatus)
     ) || 'pending';
 
-    await statusService.updateStatus(
-      requestId,
-      selectedStatus,
-      'current-user', // TODO: Get from auth context
-      notes
-    );
-
+    if (selectedStatus !== 'approved' && selectedStatus !== 'rejected') return;
+    
     onStatusUpdate(selectedStatus);
     setShowNotes(false);
     setIsOpen(false);

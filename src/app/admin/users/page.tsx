@@ -1,173 +1,424 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
-import UserFormModal from '@/app/components/UserFormModal';
+import Pagination from '@/app/components/Pagination';
+import type { Database } from '@/app/components/types/database.types';
+import ProtectedRoute from '@/app/components/ProtectedRoute';
+import { toast } from 'react-hot-toast';
+import { supabaseAdmin } from '@/app/components/lib/supabase'
 
 interface User {
   id: string;
-  name: string;
   email: string;
-  role: 'admin' | 'user';
-  status: 'active' | 'inactive';
-  lastLogin: string;
+  role: string;
+  created_at: string;
+  last_sign_in: string;
+  status: 'active' | 'suspended' | 'pending';
 }
 
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    role: 'admin',
-    status: 'active',
-    lastLogin: '2024-03-10T10:00:00Z'
-  },
-  // Add more mock users...
-];
+type SortField = 'email' | 'role' | 'created_at' | 'last_sign_in' | 'status';
+type SortOrder = 'asc' | 'desc';
 
-export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+export default function UsersManagement() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
-  const handleStatusChange = async (userId: string, newStatus: 'active' | 'inactive') => {
-    setIsLoading(true);
+  const itemsPerPage = 10;
+  const supabase = createClientComponentClient<Database>();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin_users')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, 
+        () => fetchUsers())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [currentPage, sortField, sortOrder, roleFilter, statusFilter, searchQuery]);
+
+  const fetchUsers = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
-      ));
-    } catch (error) {
-      console.error('Error updating user status:', error);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error('Not authenticated');
+
+      // Verify admin role
+      const { data: adminCheck } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (adminCheck?.role !== 'admin') {
+        throw new Error('Unauthorized access');
+      }
+
+      let query = supabase
+        .from('users')
+        .select('*', { count: 'exact' });
+
+      // Apply filters
+      if (searchQuery) {
+        query = query.or(`email.ilike.%${searchQuery}%`);
+      }
+      if (roleFilter !== 'all') {
+        query = query.eq('role', roleFilter);
+      }
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+
+      const { data, error, count } = await query
+        .order(sortField, { ascending: sortOrder === 'asc' })
+        .range(from, to);
+
+      if (error) throw error;
+
+      setUsers(data || []);
+      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to fetch users');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleCreateUser = async (data: Omit<User, 'id' | 'lastLogin'>) => {
-    setIsLoading(true);
+  const handleStatusChange = async (userId: string, newStatus: 'active' | 'suspended') => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const newUser = {
-        ...data,
-        id: String(users.length + 1),
-        lastLogin: new Date().toISOString(),
-      };
-      setUsers([...users, newUser]);
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error('Error creating user:', error);
-    } finally {
-      setIsLoading(false);
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+      toast.success(`User status updated to ${newStatus}`);
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error updating user status:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to update user status');
     }
   };
 
-  const handleEditUser = async (data: Partial<User>) => {
-    if (!editingUser) return;
-    setIsLoading(true);
+  const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUsers(users.map(user => 
-        user.id === editingUser.id ? { ...user, ...data } : user
-      ));
-      setIsModalOpen(false);
-      setEditingUser(null);
+      // Update in public.users
+      const { error: dbError } = await supabaseAdmin
+        .from('users')
+        .update({ role: newRole })
+        .eq('id', userId)
+
+      if (dbError) throw dbError
+
+      // Update in auth.users metadata
+      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+        userId,
+        { user_metadata: { role: newRole } }
+      )
+
+      if (authError) throw authError
+
+      toast.success('User role updated successfully')
     } catch (error) {
-      console.error('Error updating user:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Role update failed:', error)
+      toast.error('Failed to update user role')
     }
+  }
+
+  const handleBulkAction = async (action: 'suspend' | 'activate' | 'delete') => {
+    if (!selectedUsers.length) return;
+
+    try {
+      switch (action) {
+        case 'suspend':
+        case 'activate':
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ 
+              status: action === 'suspend' ? 'suspended' : 'active',
+              updated_at: new Date().toISOString()
+            })
+            .in('id', selectedUsers);
+
+          if (updateError) throw updateError;
+          break;
+
+        case 'delete':
+          const { error: deleteError } = await supabase
+            .from('users')
+            .delete()
+            .in('id', selectedUsers);
+
+          if (deleteError) throw deleteError;
+          break;
+      }
+
+      toast.success(`Bulk action "${action}" completed successfully`);
+      setSelectedUsers([]);
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error performing bulk action:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to perform bulk action');
+    }
+  };
+
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const toggleAllUsers = () => {
+    setSelectedUsers(prev => 
+      prev.length === users.length ? [] : users.map(user => user.id)
+    );
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">User Management</h1>
-        {isLoading && <LoadingSpinner />}
-        <button
-          onClick={() => {
-            setEditingUser(null);
-            setIsModalOpen(true);
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Add New User
-        </button>
-      </div>
+    <ProtectedRoute allowedRoles={['admin']}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="sm:flex sm:items-center">
+          <div className="sm:flex-auto">
+            <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
+            <p className="mt-2 text-sm text-gray-700">
+              Manage user accounts, roles, and permissions
+            </p>
+          </div>
+        </div>
 
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Last Login
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(user.lastLogin).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => handleStatusChange(user.id, user.status === 'active' ? 'inactive' : 'active')}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    Toggle Status
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        {/* Filters */}
+        <div className="mt-4 flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="all">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="customer">Customer</option>
+            <option value="supplier">Supplier</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
 
-      <UserFormModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingUser(null);
-        }}
-        onSubmit={editingUser ? handleEditUser : handleCreateUser}
-        initialData={editingUser || undefined}
-        mode={editingUser ? 'edit' : 'create'}
-      />
-    </div>
+        {/* Bulk Actions */}
+        {selectedUsers.length > 0 && (
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => handleBulkAction('activate')}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+            >
+              Activate Selected
+            </button>
+            <button
+              onClick={() => handleBulkAction('suspend')}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700"
+            >
+              Suspend Selected
+            </button>
+            <button
+              onClick={() => handleBulkAction('delete')}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+            >
+              Delete Selected
+            </button>
+          </div>
+        )}
+
+        {/* Users Table */}
+        {loading ? (
+          <div className="mt-8 flex justify-center">
+            <LoadingSpinner />
+          </div>
+        ) : (
+          <div className="mt-8 flex flex-col">
+            <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+              <div className="inline-block min-w-full py-2 align-middle">
+                <table className="min-w-full divide-y divide-gray-300">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="px-3 py-3.5">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.length === users.length}
+                          onChange={toggleAllUsers}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
+                        onClick={() => handleSort('email')}
+                      >
+                        Email
+                        {sortField === 'email' && (
+                          <span className="ml-2">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
+                        onClick={() => handleSort('role')}
+                      >
+                        Role
+                        {sortField === 'role' && (
+                          <span className="ml-2">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
+                        onClick={() => handleSort('status')}
+                      >
+                        Status
+                        {sortField === 'status' && (
+                          <span className="ml-2">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
+                        onClick={() => handleSort('created_at')}
+                      >
+                        Created At
+                        {sortField === 'created_at' && (
+                          <span className="ml-2">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </th>
+                      <th scope="col" className="px-3 py-3.5">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {users.map((user) => (
+                      <tr key={user.id}>
+                        <td className="whitespace-nowrap px-3 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.includes(user.id)}
+                            onChange={() => toggleUserSelection(user.id)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
+                          {user.email}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm">
+                          <select
+                            value={user.role}
+                            onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="customer">Customer</option>
+                            <option value="supplier">Supplier</option>
+                          </select>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm">
+                          <select
+                            value={user.status}
+                            onChange={(e) => handleStatusChange(user.id, e.target.value as 'active' | 'suspended')}
+                            className={`rounded-md shadow-sm focus:ring-blue-500 ${
+                              user.status === 'active'
+                                ? 'text-green-800 bg-green-100 border-green-200'
+                                : user.status === 'suspended'
+                                ? 'text-red-800 bg-red-100 border-red-200'
+                                : 'text-yellow-800 bg-yellow-100 border-yellow-200'
+                            }`}
+                          >
+                            <option value="active">Active</option>
+                            <option value="suspended">Suspended</option>
+                            <option value="pending">Pending</option>
+                          </select>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && (
+          <div className="mt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
+      </div>
+    </ProtectedRoute>
   );
 } 

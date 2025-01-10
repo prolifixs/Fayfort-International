@@ -1,35 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../components/lib/supabase'
-
-export interface Request {
-  id: string
-  customer_id: string
-  product_id: string
-  quantity: number
-  budget: number
-  status: 'pending' | 'approved' | 'rejected' | 'fulfilled'
-  created_at: string
-  updated_at: string
-  product: {
-    name: string
-    category: string
-  }
-  customer: {
-    name: string
-    email: string
-  }
-  status_history: {
-    id: string
-    status: string
-    notes: string
-    created_at: string
-    updated_by: {
-      name: string
-    }
-  }[]
-}
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { RequestWithRelations, RequestFormData } from '../components/types/request.types'
+import { SupabaseRequestResponse, isSupabaseRequestResponse } from '../components/types/database.types'
 
 interface UseRequestsOptions {
   status?: string
@@ -38,10 +12,12 @@ interface UseRequestsOptions {
 }
 
 export function useRequests(options: UseRequestsOptions = {}) {
-  const [requests, setRequests] = useState<Request[]>([])
+  const [requests, setRequests] = useState<RequestWithRelations[]>([])
   const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  const supabase = createClientComponentClient()
 
   // Memoize options to prevent infinite loops
   const memoizedOptions = useMemo(() => ({
@@ -50,44 +26,73 @@ export function useRequests(options: UseRequestsOptions = {}) {
     endDate: options.endDate
   }), [options.status, options.startDate, options.endDate])
 
-  useEffect(() => {
-    fetchRequests()
-  }, [memoizedOptions]) // Use memoized options instead
-
   const fetchRequests = async () => {
     try {
       setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       let query = supabase
         .from('requests')
         .select(`
-          *,
-          product:products(name, category),
-          customer:users(name, email),
-          status_history(
+          id,
+          created_at,
+          updated_at,
+          status,
+          quantity,
+          budget,
+          notes,
+          customer_id,
+          product_id,
+          product:products (
+            name,
+            category,
+            image_url
+          ),
+          customer:users (
+            name,
+            email
+          ),
+          status_history (
             id,
             status,
             notes,
             created_at,
-            updated_by:users(name)
+            updated_by (
+              id,
+              name
+            )
           )
         `)
+        .eq('customer_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (options.status && options.status !== 'all') {
-        query = query.eq('status', options.status)
+      if (memoizedOptions.status && memoizedOptions.status !== 'all') {
+        query = query.eq('status', memoizedOptions.status)
       }
-      if (options.startDate) {
-        query = query.gte('created_at', options.startDate)
+      if (memoizedOptions.startDate) {
+        query = query.gte('created_at', memoizedOptions.startDate)
       }
-      if (options.endDate) {
-        query = query.lte('created_at', options.endDate)
+      if (memoizedOptions.endDate) {
+        query = query.lte('created_at', memoizedOptions.endDate)
       }
 
-      const { data, error } = await query
+      const { data, error: fetchError } = await query
 
-      if (error) throw error
+      if (fetchError) throw fetchError
 
-      setRequests(data as Request[])
+      const transformedData = data?.map(item => {
+        if (!isSupabaseRequestResponse(item)) {
+          throw new Error('Invalid response format from Supabase');
+        }
+        return {
+          ...item,
+          product: item.product[0],
+          customer: item.customer[0]
+        };
+      }) || [];
+
+      setRequests(transformedData as RequestWithRelations[]);
 
       // Calculate stats
       const total = data.length
@@ -103,19 +108,17 @@ export function useRequests(options: UseRequestsOptions = {}) {
     }
   }
 
-  const createRequest = async (data: {
-    product_id: string
-    quantity: number
-    budget: number
-    notes?: string
-  }) => {
+  const createRequest = async (formData: RequestFormData) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: request, error } = await supabase
         .from('requests')
         .insert([{
-          ...data,
+          ...formData,
           status: 'pending',
-          customer_id: (await supabase.auth.getUser()).data.user?.id
+          customer_id: user.id
         }])
         .select()
         .single()
@@ -129,7 +132,7 @@ export function useRequests(options: UseRequestsOptions = {}) {
           request_id: request.id,
           status: 'pending',
           notes: 'Request created',
-          updated_by: (await supabase.auth.getUser()).data.user?.id
+          updated_by: user.id
         }])
 
       await fetchRequests()
@@ -140,6 +143,10 @@ export function useRequests(options: UseRequestsOptions = {}) {
       throw err
     }
   }
+
+  useEffect(() => {
+    fetchRequests()
+  }, [memoizedOptions])
 
   return {
     requests,

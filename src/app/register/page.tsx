@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 import { checkPasswordStrength } from '@/app/utils/passwordStrength'
 import { validateEmail, validatePassword } from '../utils/auth'
+import { z } from 'zod'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 interface RegisterFormData {
   name: string
@@ -15,6 +17,18 @@ interface RegisterFormData {
   password: string
   role: 'customer' | 'supplier'
 }
+
+const registerSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  role: z.enum(['customer', 'supplier']),
+});
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -40,47 +54,80 @@ export default function RegisterPage() {
     color: ''
   })
 
+  useEffect(() => {
+    const strength = checkPasswordStrength(formData.password);
+    setPasswordStrength(strength);
+  }, [formData.password]);
+
+  const isPasswordValid = 
+    passwordStrength.checks.length && 
+    passwordStrength.checks.hasUpperCase && 
+    passwordStrength.checks.hasLowerCase && 
+    passwordStrength.checks.hasNumbers && 
+    passwordStrength.checks.hasSpecialChar;
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setFormData({ ...formData, password: newPassword });
+    const strength = checkPasswordStrength(newPassword);
+    setPasswordStrength(strength);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const sanitizedEmail = formData.email.trim().toLowerCase();
-    setFormData(prev => ({ ...prev, email: sanitizedEmail }));
-
-    if (!validateEmail(sanitizedEmail)) {
-      console.log('❌ Email validation failed');
-      setError('Please enter a valid email');
-      return;
-    }
-
-    if (!validatePassword(formData.password)) {
-      console.log('❌ Password validation failed');
-      setError('Password must meet the requirements');
-      return;
-    }
-    
     setLoading(true);
     setError(null);
 
     try {
-      console.log('📤 Sending signup request...');
-      await signUp(
-        sanitizedEmail,      // email
-        formData.password,   // password
-        formData.role,       // role
-        formData.name        // name
-      );
+      console.log('1. Starting registration process');
+      console.log('Form data:', formData);
+
+      if (!validateEmail(formData.email)) {
+        throw new Error('Invalid email format');
+      }
       
-      console.log('✅ Signup request successful, redirecting...');
-      localStorage.setItem('verificationEmail', sanitizedEmail);
+      if (!isPasswordValid) {
+        throw new Error('Password does not meet requirements');
+      }
+
+      console.log('2. Validation passed');
+      const validatedData = registerSchema.parse(formData);
+      console.log('3. Schema validation passed');
+
+      const supabase = createClientComponentClient();
+      console.log('4. Supabase client created');
+      
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: validatedData.email,
+        password: validatedData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/verify-email`,
+          data: {
+            name: validatedData.name,
+            role: validatedData.role
+          }
+        }
+      });
+  
+      console.log('Auth response:', { authData, signUpError });
+
+      if (signUpError) throw signUpError;
+      if (!authData.user?.id) throw new Error('No user ID returned');
+  
+      console.log('6. User created successfully:', authData.user.id);
+
+      localStorage.setItem('verificationEmail', validatedData.email);
       router.push('/check-email');
+      toast.success('Registration successful! Please check your email.');
+  
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to register');
+      setError(err instanceof Error ? err.message : 'Registration failed');
       toast.error('Registration failed');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setLoading(true)
@@ -99,12 +146,6 @@ export default function RegisterPage() {
     } finally {
       setLoading(false)
     }
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newPassword = e.target.value;
-    setFormData({ ...formData, password: newPassword });
-    setPasswordStrength(checkPasswordStrength(newPassword));
   };
 
   return (
@@ -165,7 +206,7 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                   required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={handlePasswordChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -240,7 +281,7 @@ export default function RegisterPage() {
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !isPasswordValid || !formData.email || !formData.name}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 {loading ? <LoadingSpinner /> : 'Sign up'}

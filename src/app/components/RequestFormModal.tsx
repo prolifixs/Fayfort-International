@@ -2,11 +2,15 @@
 
 import React, { useState } from 'react'
 import { useProducts } from '../hooks/useProducts'
+import { Database } from './types/database.types'
 
-type RequestFormModalProps = {
+type Product = Database['public']['Tables']['products']['Row']
+
+interface RequestFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: RequestFormData) => void
+  onSubmit: (formData: RequestFormData) => Promise<void>
+  product: Product
 }
 
 export type RequestFormData = {
@@ -16,22 +20,27 @@ export type RequestFormData = {
   notes?: string
 }
 
-export default function RequestFormModal({ isOpen, onClose, onSubmit }: RequestFormModalProps) {
+export default function RequestFormModal({ isOpen, onClose, onSubmit, product }: RequestFormModalProps) {
   const [formData, setFormData] = useState<RequestFormData>({
-    product_id: '',
+    product_id: product?.id || '',
     quantity: 1,
     budget: 0,
     notes: ''
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { products } = useProducts({
     disableRealtime: true
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(formData)
-    onClose()
+    setIsSubmitting(true)
+    try {
+      await onSubmit(formData)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (!isOpen) return null
@@ -123,9 +132,11 @@ export default function RequestFormModal({ isOpen, onClose, onSubmit }: RequestF
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={isSubmitting}
+              className={`px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md 
+                ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
             >
-              Submit Request
+              {isSubmitting ? 'Submitting...' : 'Submit Request'}
             </button>
           </div>
         </form>

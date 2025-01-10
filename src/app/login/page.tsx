@@ -1,21 +1,26 @@
 'use client'
 
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import LoadingSpinner from '../components/LoadingSpinner'
 import { useAuth } from '@/contexts/AuthContext'
+import LoadingSpinner from '../components/LoadingSpinner'
 import { toast } from 'react-hot-toast'
 
-interface LoginFormData {
+interface FormData {
   email: string
   password: string
 }
 
+const debugLogin = (message: string, data?: any) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔑 Login Debug: ${message}`, data || '');
+  }
+};
+
 export default function LoginPage() {
-  const router = useRouter()
   const { signIn, signInWithGoogle, signInWithFacebook } = useAuth()
-  const [formData, setFormData] = useState<LoginFormData>({
+  const [formData, setFormData] = useState<FormData>({
     email: '',
     password: ''
   })
@@ -28,19 +33,34 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      await signIn(formData.email, formData.password)
-      toast.success('Successfully signed in!')
-      // No need to redirect here as it's handled by AuthContext
+      debugLogin('Starting login process', { email: formData.email })
+      const { user } = await signIn(formData.email, formData.password)
+      debugLogin('Sign in successful', { userId: user?.id })
+
+      // Wait for session to be fully established
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Get redirect URL from query params or use default based on role
+      const searchParams = new URLSearchParams(window.location.search)
+      const redirectTo = searchParams.get('redirectedFrom') || getDefaultRedirect(user?.user_metadata?.role)
+      
+      toast.success('Login successful')
+      debugLogin('Redirecting to', { redirectTo })
+      
+      // Force a hard navigation instead of client-side routing
+      window.location.href = redirectTo
     } catch (err) {
+      debugLogin('Login error', err)
       console.error('Login error:', err)
       setError(err instanceof Error ? err.message : 'Failed to login')
-      toast.error('Failed to sign in')
+      toast.error('Login failed')
     } finally {
       setLoading(false)
     }
   }
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    debugLogin('Starting social login', { provider })
     setLoading(true)
     setError(null)
 
@@ -50,11 +70,25 @@ export default function LoginPage() {
       } else {
         await signInWithFacebook()
       }
-      // No need to redirect here as it's handled by OAuth flow
+      debugLogin('Social login successful')
     } catch (err) {
+      debugLogin('Social login error', err)
+      console.error('Social login error:', err)
       setError(err instanceof Error ? err.message : 'Failed to login')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Helper function to get default redirect based on role
+  const getDefaultRedirect = (role?: string) => {
+    switch (role) {
+      case 'admin':
+        return '/admin'
+      case 'supplier':
+        return '/supplier'
+      default:
+        return '/dashboard'
     }
   }
 

@@ -1,31 +1,36 @@
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
+import { Database } from '@/app/components/types/database.types'
 
-const supabaseUrl = 'https://uxbakpeeqydatgvvdyaa.supabase.co'
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4YmFrcGVlcXlkYXRndnZkeWFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU2MDg5MTcsImV4cCI6MjA1MTE4NDkxN30.9UOvUzpcsag8PtWMtfnaSbE5ln2h_FFE_gxbsCZz20A'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uxbakpeeqydatgvvdyaa.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
 
-if (!supabaseUrl) {
-  throw new Error('Missing Supabase URL')
-}
-if (!supabaseKey) {
-  throw new Error('Missing Supabase Anon Key')
-}
+if (!supabaseUrl) throw new Error('Missing Supabase URL')
+if (!supabaseAnonKey) throw new Error('Missing Supabase Anon Key')
+if (!supabaseServiceKey) throw new Error('Missing Supabase Service Role Key')
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+// Create single client instance for regular user operations using createClientComponentClient
+export const supabase = createClientComponentClient<Database>({
+  supabaseUrl,
+  supabaseKey: supabaseAnonKey,
+  cookieOptions: {
+    name: 'fayfort-auth',
+    path: '/',
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    domain: typeof window !== 'undefined' ? window.location.hostname : undefined
+  }
+})
+
+// Create admin client with service role key for administrative operations
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: 'fayfort-auth',
-    flowType: 'pkce'
+    persistSession: false
   },
   db: {
     schema: 'public'
-  },
-  global: {
-    headers: {
-      'x-my-custom-header': 'fayfortenterprise'
-    }
   }
 })
 
@@ -36,7 +41,7 @@ export const socialAuthProviders = {
     options: {
       queryParams: {
         access_type: 'offline',
-        prompt: 'consent',
+        prompt: 'consent'
       }
     }
   },
@@ -50,17 +55,25 @@ export const socialAuthProviders = {
   }
 } as const
 
-// Debug logging only in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('Supabase Client Initialized:', {
-    url: supabaseUrl,
-    keyLength: supabaseKey?.length
-  })
+// Helper function to get the appropriate client based on admin status
+export const getSupabaseClient = (isAdmin: boolean = false) => {
+  return isAdmin ? supabaseAdmin : supabase
 }
 
-// Handle redirect URL separately in your auth functions
+// Handle redirect URL for auth
 export const getRedirectUrl = () => {
-  const redirectUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`;
-  console.log('🔗 Generated redirect URL:', redirectUrl);
-  return redirectUrl;
-};
+  const redirectUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔗 Generated redirect URL:', redirectUrl)
+  }
+  return redirectUrl
+}
+
+// Debug logging only in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔗 Supabase Clients Initialized:', {
+    url: supabaseUrl,
+    anonKeyLength: supabaseAnonKey?.length,
+    serviceKeyLength: supabaseServiceKey?.length
+  })
+}

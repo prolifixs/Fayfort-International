@@ -108,3 +108,41 @@ export type TableInsert<T extends keyof Database['public']['Tables']> =
 
 export type TableUpdate<T extends keyof Database['public']['Tables']> = 
   Database['public']['Tables'][T]['Update'] 
+
+export type SupabaseRequestResponse = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  status: 'pending' | 'approved' | 'rejected' | 'fulfilled';
+  quantity: number;
+  budget: number;
+  notes: string | null;
+  customer_id: string;
+  product_id: string;
+  product: [{
+    name: string;
+    category: string;
+    image_url: string | null;
+  }];
+  customer: [{
+    name: string;
+    email: string;
+  }];
+  status_history: {
+    id: string;
+    status: string;
+    notes: string | null;
+    created_at: string;
+    updated_by: {
+      id: string;
+      name: string;
+    };
+  }[];
+}
+
+export function isSupabaseRequestResponse(obj: any): obj is SupabaseRequestResponse {
+  return obj 
+    && typeof obj.id === 'string'
+    && Array.isArray(obj.product)
+    && Array.isArray(obj.customer);
+} 

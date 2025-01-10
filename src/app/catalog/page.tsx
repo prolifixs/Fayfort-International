@@ -1,148 +1,189 @@
 'use client';
-import { useState } from 'react';
-import { products } from '../components/data/dummy';
-import { Product } from '../components/types';
+
+import ProtectedRoute from '@/app/components/ProtectedRoute';
+import { useState, useEffect } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import LoadingSpinner from '@/app/components/LoadingSpinner';
+import Pagination from '@/app/components/Pagination';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import type { Database } from '@/app/components/types/database.types';
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  price_range: string;
+  image_url: string;
+  availability: boolean;
+}
 
 export default function CatalogPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
-  
-  const productsPerPage = 8;
-  const categories = ['all', 'fashion', 'electronics', 'home goods'];
+  const productsPerPage = 10;
 
-  const filterProducts = (query: string, category: string) => {
-    return products.filter(product => {
-      const matchesSearch = 
-        product.name.toLowerCase().includes(query.toLowerCase()) ||
-        product.description.toLowerCase().includes(query.toLowerCase());
-      
-      const matchesCategory = category === 'all' || product.category === category;
-      
-      return matchesSearch && matchesCategory;
-    });
+  const supabase = createClientComponentClient<Database>();
+
+  // Real-time subscription setup
+  useEffect(() => {
+    const channel = supabase
+      .channel('product_updates')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'products' 
+        }, 
+        (payload) => {
+          fetchProducts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      let query = supabase
+        .from('products')
+        .select('*')
+        .eq('availability', true)
+        .order('created_at', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load products');
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page on new search
-    setFilteredProducts(filterProducts(query, selectedCategory));
-  };
+  // Filter products
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
-    setCurrentPage(1); // Reset to first page on category change
-    setFilteredProducts(filterProducts(searchQuery, category));
-  };
-
-  // Pagination calculations
+  const categories = Array.from(new Set(products.map(p => p.category)));
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
-  const indexOfLastProduct = currentPage * productsPerPage;
-  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
-
-  // Previous and next page handlers
-  const handlePrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
-  const handleNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const currentProducts = filteredProducts.slice(
+    (currentPage - 1) * productsPerPage,
+    currentPage * productsPerPage
+  );
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Product Catalog</h1>
-      
-      {/* Search Bar */}
-      <div className="relative">
-        <input
-          type="text"
-          placeholder="Search products..."
-          className="w-full p-3 border rounded-lg pl-10"
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
-        <svg
-          className="absolute left-3 top-3.5 h-5 w-5 text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-      </div>
-
-      {/* Category Filter */}
-      <div className="flex gap-4 py-4">
-        {categories.map((category) => (
-          <button
-            key={category}
-            onClick={() => handleCategoryChange(category)}
-            className={`px-4 py-2 rounded-full ${
-              selectedCategory === category
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 hover:bg-gray-300'
-            }`}
-          >
-            {category.charAt(0).toUpperCase() + category.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Product Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {currentProducts.map((product) => (
-          <Link href={`/catalog/${product.id}`} key={product.id}>
-            <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <div className="h-48 bg-gray-200"></div>
-              <div className="p-4">
-                <h3 className="font-semibold">{product.name}</h3>
-                <p className="text-sm text-gray-600">{product.description}</p>
-                <p className="text-sm font-medium mt-2">{product.price_range}</p>
-                <span className={`text-sm ${product.availability ? 'text-green-600' : 'text-red-600'}`}>
-                  {product.availability ? 'In Stock' : 'Out of Stock'}
-                </span>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 mt-8">
-          <button
-            onClick={handlePrevPage}
-            disabled={currentPage === 1}
-            className={`px-4 py-2 rounded-lg ${
-              currentPage === 1
-                ? 'bg-gray-100 text-gray-400'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            Previous
-          </button>
-          
-          <span className="text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
-
-          <button
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages}
-            className={`px-4 py-2 rounded-lg ${
-              currentPage === totalPages
-                ? 'bg-gray-100 text-gray-400'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            Next
-          </button>
+    <ProtectedRoute allowedRoles={['customer', 'admin', 'supplier']}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header and Filters */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">Product Catalog</h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="p-2 border rounded-lg w-full"
+            />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="p-2 border rounded-lg w-full"
+            >
+              <option value="all">All Categories</option>
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* Product Grid */}
+        {loading ? (
+          <LoadingSpinner />
+        ) : error ? (
+          <div className="text-red-500">{error}</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {currentProducts.map((product) => (
+                <Link 
+                  href={`/catalog/${product.id}`} 
+                  key={product.id}
+                  className="group"
+                >
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                    <div className="aspect-w-4 aspect-h-3">
+                      <img
+                        src={product.image_url || '/placeholder.jpg'}
+                        alt={product.name}
+                        className="h-48 w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder.jpg';
+                          console.log('Image failed to load:', product.image_url);
+                        }}
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600">
+                        {product.name}
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {product.description.length > 100 
+                          ? `${product.description.substring(0, 100)}...` 
+                          : product.description}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">
+                          {product.price_range}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {product.category}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }
