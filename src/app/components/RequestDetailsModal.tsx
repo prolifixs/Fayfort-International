@@ -1,156 +1,137 @@
 'use client'
 
-import React from 'react'
+import { useState, useEffect } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
+import { StatusBadge } from './ui/StatusBadge'
+import { Loader2 } from 'lucide-react'
+import { format } from 'date-fns'
 
-type RequestDetailsModalProps = {
-  isOpen: boolean
-  onClose: () => void
-  request: RequestDetails | null
-}
-
-export type RequestDetails = {
-  id: number
-  product: {
-    name: string
-    category: string
-    image_url?: string
-  }
+interface RequestDetails {
+  id: string
   status: string
-  date: string
+  created_at: string
+  product: { name: string }
   quantity: number
   budget: number
-  customer?: {
-    name: string
-    email: string
-  }
-  status_history?: {
+  notes?: string
+  invoice?: {
+    id: string
     status: string
-    notes?: string
-    created_at: string
-    updated_by: {
-      name: string
-    }
-  }[]
+    amount: number
+  }
 }
 
-export default function RequestDetailsModal({ isOpen, onClose, request }: RequestDetailsModalProps) {
-  if (!isOpen || !request) return null
+interface RequestDetailsModalProps {
+  requestId: string | null
+  onClose: () => void
+}
+
+export function RequestDetailsModal({ requestId, onClose }: RequestDetailsModalProps) {
+  const [details, setDetails] = useState<RequestDetails | null>(null)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    if (requestId) {
+      fetchRequestDetails()
+    }
+  }, [requestId])
+
+  async function fetchRequestDetails() {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('requests')
+        .select(`
+          *,
+          product:products(name),
+          invoice:invoices(id, status, amount)
+        `)
+        .eq('id', requestId)
+        .single()
+
+      if (error) throw error
+      setDetails(data)
+    } catch (error) {
+      console.error('Error fetching request details:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Request Details #{request.id}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-500 transition-colors"
-          >
-            <span className="sr-only">Close</span>
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <Dialog open={!!requestId} onOpenChange={() => onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Request Details</DialogTitle>
+        </DialogHeader>
 
-        {/* Product Details */}
-        <div className="mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Product Information</h3>
-          <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Product Name</p>
-              <p className="mt-1 text-sm text-gray-900">{request.product.name}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Category</p>
-              <p className="mt-1 text-sm text-gray-900">{request.product.category}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Quantity</p>
-              <p className="mt-1 text-sm text-gray-900">{request.quantity}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Budget</p>
-              <p className="mt-1 text-sm text-gray-900">${request.budget}</p>
-            </div>
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
           </div>
-        </div>
-
-        {/* Status Information */}
-        <div className="mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Status Information</h3>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center mb-4">
-              <span className={`px-2 py-1 text-xs font-medium rounded-full
-                ${request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                ${request.status === 'approved' ? 'bg-green-100 text-green-800' : ''}
-                ${request.status === 'rejected' ? 'bg-red-100 text-red-800' : ''}
-                ${request.status === 'fulfilled' ? 'bg-blue-100 text-blue-800' : ''}
-              `}>
-                {request.status.toUpperCase()}
-              </span>
-              <span className="ml-2 text-sm text-gray-500">
-                Last updated: {new Date(request.date).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Status History */}
-        {request.status_history && request.status_history.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Status History</h3>
-            <div className="space-y-4">
-              {request.status_history.map((history, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full
-                        ${history.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                        ${history.status === 'approved' ? 'bg-green-100 text-green-800' : ''}
-                        ${history.status === 'rejected' ? 'bg-red-100 text-red-800' : ''}
-                        ${history.status === 'fulfilled' ? 'bg-blue-100 text-blue-800' : ''}
-                      `}>
-                        {history.status.toUpperCase()}
-                      </span>
-                      <p className="mt-2 text-sm text-gray-600">{history.notes}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">
-                        {new Date(history.created_at).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        by {history.updated_by.name}
-                      </p>
-                    </div>
-                  </div>
+        ) : details ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Status</label>
+                <div className="mt-1">
+                  <StatusBadge status={details.status} />
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Customer Information */}
-        {request.customer && (
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h3>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Name</p>
-                  <p className="mt-1 text-sm text-gray-900">{request.customer.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Email</p>
-                  <p className="mt-1 text-sm text-gray-900">{request.customer.email}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Created</label>
+                <div className="mt-1 text-sm">
+                  {format(new Date(details.created_at), 'PPP')}
                 </div>
               </div>
             </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-500">Product</label>
+              <div className="mt-1 text-sm">{details.product.name}</div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Quantity</label>
+                <div className="mt-1 text-sm">{details.quantity}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Budget</label>
+                <div className="mt-1 text-sm">${details.budget}</div>
+              </div>
+            </div>
+
+            {details.notes && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Notes</label>
+                <div className="mt-1 text-sm">{details.notes}</div>
+              </div>
+            )}
+
+            {details.invoice && (
+              <div className="border-t pt-4 mt-4">
+                <label className="text-sm font-medium text-gray-500">Invoice</label>
+                <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">#{details.invoice.id}</span>
+                    <StatusBadge status={details.invoice.status} />
+                  </div>
+                  <div className="mt-2 text-sm font-medium">
+                    Amount: ${details.invoice.amount}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-4 text-gray-500">
+            Request not found
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 } 

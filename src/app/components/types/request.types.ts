@@ -4,26 +4,31 @@ import { Database } from './database.types';
 export type BaseRequest = Database['public']['Tables']['requests']['Row'];
 
 // Extended request type with relationships
-export interface RequestWithRelations extends BaseRequest {
+export interface RequestWithRelations {
+  id: string;
+  status: RequestStatus;
+  created_at: string;
+  quantity: number;
+  budget: number;
   product: {
-    name: string;
-    category: string;
-    image_url: string | null;
-  };
-  customer?: {
-    name: string;
-    email: string;
-  };
-  status_history?: {
     id: string;
-    status: string;
-    notes?: string;
-    created_at: string;
-    updated_by: {
-      id: string;
-      name: string;
-    };
-  }[];
+    name: string;
+  };
+  customer: {
+    id: string;
+    email: string | null;
+  };
+}
+
+export function isValidRequest(request: any): request is RequestWithRelations {
+  return (
+    request &&
+    typeof request.id === 'string' &&
+    typeof request.customer_id === 'string' &&
+    typeof request.product_id === 'string' &&
+    request.product &&
+    typeof request.product.name === 'string'
+  )
 }
 
 // Request status type
@@ -34,4 +39,6 @@ export type RequestStatusWithAll = RequestStatus | 'all';
 // Request form data type
 export type RequestFormData = Pick<BaseRequest, 'product_id' | 'quantity' | 'budget'> & {
   notes?: string;
-}; 
+};
+
+export type SortField = 'created_at' | 'status' | 'product.name' | 'user.email' | 'budget' | 'quantity'; 

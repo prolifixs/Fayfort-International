@@ -10,7 +10,7 @@ interface RequestFormModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (formData: RequestFormData) => Promise<void>
-  product: Product
+  product: Product | null
 }
 
 export type RequestFormData = {

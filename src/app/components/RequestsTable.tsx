@@ -1,49 +1,42 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { RequestWithRelations, RequestStatus } from '@/app/components/types/request.types';
+import { useState, useEffect } from 'react';
+import { RequestWithRelations, SortField } from '@/app/components/types/request.types';
 import StatusUpdateDropdown from './StatusUpdateDropdown';
 import StatusHistoryModal from './StatusHistoryModal';
-import RequestFilters from './RequestFilters';
-import Pagination from './Pagination';
 import { websocketService } from '@/services/websocketService';
 import type { ConnectionStatus } from '@/services/websocketService';
-import { toast } from 'react-hot-toast';
-import ConnectionStatusIndicator from '@/app/components/ConnectionStatus';
-
-type SortField = 'created_at' | 'status' | 'product.name' | 'user.email';
 
 interface RequestsTableProps {
   requests: RequestWithRelations[];
   onStatusUpdate?: (requestId: string, newStatus: 'approved' | 'rejected') => Promise<void>;
   onSort: (field: SortField) => void;
-  sortField: string;
+  sortField: SortField;
   sortOrder: 'asc' | 'desc';
+  itemsPerPage?: number;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
 }
 
-interface Filters {
-  search?: string;
-  status?: 'pending' | 'approved' | 'rejected' | 'fulfilled' | 'all';
-  dateRange?: {
-    start: Date | null;
-    end: Date | null;
-  };
-}
-
-const ITEMS_PER_PAGE = 10;
-
 export default function RequestsTable({ 
   requests: initialRequests, 
-  onStatusUpdate 
+  onStatusUpdate,
+  onSort,
+  sortField,
+  sortOrder,
+  itemsPerPage = 10,
+  currentPage,
+  totalPages,
+  onPageChange
 }: RequestsTableProps) {
   const [requests, setRequests] = useState<RequestWithRelations[]>(initialRequests);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
-  const [filters, setFilters] = useState<Filters>({});
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+
+  useEffect(() => {
+    setRequests(initialRequests)
+  }, [initialRequests])
 
   useEffect(() => {
     const unsubscribeStatus = websocketService.subscribeToStatus(setConnectionStatus);
@@ -60,31 +53,8 @@ export default function RequestsTable({
     return () => {
       unsubscribeStatus();
       unsubscribeUpdates();
-    };
+    }
   }, []);
-
-  const filteredRequests = useMemo(() => {
-    return requests.filter(request => {
-      if (filters.status && filters.status !== 'all' && request.status !== filters.status) {
-        return false;
-      }
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        return (
-          request.id.toLowerCase().includes(searchLower) ||
-          request.product.name.toLowerCase().includes(searchLower) ||
-          request.status.toLowerCase().includes(searchLower)
-        );
-      }
-      return true;
-    });
-  }, [requests, filters]);
-
-  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
-  const paginatedRequests = filteredRequests.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
 
   const handleStatusUpdate = (requestId: string, newStatus: 'approved' | 'rejected') => {
     onStatusUpdate?.(requestId, newStatus);
@@ -93,15 +63,12 @@ export default function RequestsTable({
     }
   };
 
+  // Calculate pagination
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRequests = requests.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <RequestFilters 
-          onFilterChange={(newFilters) => setFilters(newFilters as Filters)} 
-        />
-        <ConnectionStatusIndicator status={connectionStatus} />
-      </div>
-
       <div className="overflow-x-auto bg-white rounded-lg shadow">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -133,7 +100,7 @@ export default function RequestsTable({
             {paginatedRequests.map((request) => (
               <tr key={request.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {request.id}
+                  {request.id.slice(0, 8)}...
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {request.product.name}
@@ -152,26 +119,68 @@ export default function RequestsTable({
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(request.created_at).toLocaleString()}
+                  {new Date(request.created_at).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <button
                     onClick={() => setSelectedRequestId(request.id)}
                     className="text-blue-600 hover:text-blue-900"
                   >
-                    View History
+                    View
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+        <div className="flex justify-between flex-1 sm:hidden">
+          <button
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Next
+          </button>
+        </div>
+        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+              <span className="font-medium">
+                {Math.min(startIndex + itemsPerPage, requests.length)}
+              </span>{' '}
+              of <span className="font-medium">{requests.length}</span> results
+            </p>
+          </div>
+          <div>
+            <nav className="inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => onPageChange(page)}
+                  className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${
+                    currentPage === page
+                      ? 'z-10 bg-blue-600 text-white'
+                      : 'text-gray-500 bg-white hover:bg-gray-50'
+                  } border border-gray-300`}
+                >
+                  {page}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
       </div>
 
       {selectedRequestId && (

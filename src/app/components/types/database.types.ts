@@ -86,6 +86,52 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['supplier_responses']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['supplier_responses']['Insert']>
       }
+      activity_log: {
+        Row: {
+          id: string
+          user_id: string
+          user_email: string
+          type: string
+          content: string
+          reference_id: string | null
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['activity_log']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['activity_log']['Insert']>
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: 'success' | 'error' | 'warning' | 'info' | 'status_change' | 'invoice_ready' | 
+                'invoice_paid' | 'payment_received' | 'payment_due' | 'request_update'
+          content: string
+          reference_id: string | null
+          reference_type: string
+          metadata: Json | null
+          read_status: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['notifications']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['notifications']['Insert']>
+      }
+      invoices: {
+        Row: {
+          id: string
+          request_id: string
+          user_id: string
+          status: 'draft' | 'sent' | 'paid' | 'cancelled'
+          amount: number
+          due_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['invoices']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['invoices']['Insert']>
+      }
     }
     Views: {
       [_ in never]: never
@@ -146,3 +192,7 @@ export function isSupabaseRequestResponse(obj: any): obj is SupabaseRequestRespo
     && Array.isArray(obj.product)
     && Array.isArray(obj.customer);
 } 
+
+export type Activity = Database['public']['Tables']['activity_log']['Row']
+export type Notification = Database['public']['Tables']['notifications']['Row']
+export type NotificationType = Notification['type'] 

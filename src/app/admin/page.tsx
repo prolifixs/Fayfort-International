@@ -25,6 +25,34 @@ interface ChartData {
   revenueLabels: string[];
 }
 
+async function fetchAllRequests() {
+  const supabase = createClientComponentClient()
+  
+  const { data, error } = await supabase
+    .from('requests')
+    .select(`
+      *,
+      product:products!inner (
+        id,
+        name
+      ),
+      customer:users!requests_customer_id_fkey (
+        id,
+        email
+      )
+    `)
+    .order('created_at', { ascending: false })
+
+  console.log('[Admin/Page] Fetch Results:', {
+    requestCount: data?.length || 0,
+    hasNullCustomers: data?.some(r => !r.customer_id),
+    timestamp: new Date().toISOString()
+  })
+
+  if (error) throw error
+  return data
+}
+
 export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
@@ -97,26 +125,26 @@ export default function AdminDashboard() {
         supabase.from('users').select('*', { count: 'exact', head: true }),
         supabase.from('products').select('*', { count: 'exact', head: true }).eq('availability', true),
         supabase.from('requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('products')
-          .select('category', { count: 'exact', head: false })
-          .not('category', 'is', null),
+        supabase.from('products').select('category', { count: 'exact' }),
         supabase.from('requests')
           .select(`
             id,
             status,
             created_at,
             quantity,
+            budget,
             customer_id,
             product_id,
-            users!customer_id (
+            customer:users!left (
+              id,
               email
             ),
-            product:products (
+            product:products!requests_product_id_fkey (
+              id,
               name
             )
           `)
           .order('created_at', { ascending: false })
-          .limit(5)
       ]);
 
       console.log('Recent Requests:', recentRequests);
@@ -146,23 +174,20 @@ export default function AdminDashboard() {
       
       // Calculate date range
       const daysToFetch = range === 'week' ? 7 : range === 'month' ? 30 : 365;
-      const dates = Array.from({length: daysToFetch}, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        return d.toISOString().split('T')[0];
-      }).reverse();
-
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysToFetch);
+      
       // Fetch all required data
       const [requestsData, usersData, productsData, revenueData] = await Promise.all([
         supabase
           .from('requests')
           .select('created_at')
-          .gte('created_at', dates[0]),
+          .gte('created_at', startDate.toISOString()),
         
         supabase
           .from('profiles')
           .select('created_at')
-          .gte('created_at', dates[0]),
+          .gte('created_at', startDate.toISOString()),
         
         supabase
           .from('products')
@@ -170,19 +195,23 @@ export default function AdminDashboard() {
         
         supabase
           .from('requests')
-          .select('created_at, total_amount')
-          .gte('created_at', dates[0])
+          .select('created_at, budget')
+          .gte('created_at', startDate.toISOString())
           .eq('status', 'completed')
       ]);
 
       // Process data for charts
-      const requestsPerDay = dates.map(date => 
-        requestsData.data?.filter(r => r.created_at.startsWith(date)).length || 0
-      );
+      const requestsPerDay = Array.from({length: daysToFetch}, (_, i) => {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i);
+        return requestsData.data?.filter(r => r.created_at.startsWith(d.toISOString().split('T')[0])).length || 0;
+      });
 
-      const usersPerDay = dates.map(date => 
-        usersData.data?.filter(u => u.created_at.startsWith(date)).length || 0
-      );
+      const usersPerDay = Array.from({length: daysToFetch}, (_, i) => {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i);
+        return usersData.data?.filter(u => u.created_at.startsWith(d.toISOString().split('T')[0])).length || 0;
+      });
 
       // Process category distribution
       const categories = productsData.data?.reduce((acc: any, product) => {
@@ -191,19 +220,28 @@ export default function AdminDashboard() {
       }, {});
 
       // Process revenue data
-      const revenuePerDay = dates.map(date => 
-        revenueData.data?.filter(r => r.created_at.startsWith(date))
-          .reduce((sum, r) => sum + (r.total_amount || 0), 0) || 0
-      );
+      const revenuePerDay = Array.from({length: daysToFetch}, (_, i) => {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i);
+        return revenueData.data?.filter(r => r.created_at.startsWith(d.toISOString().split('T')[0])).reduce((sum, r) => sum + (r.budget || 0), 0) || 0;
+      });
 
       setChartData({
         requestsOverTime: requestsPerDay,
         userGrowth: usersPerDay,
         productDistribution: Object.values(categories || {}),
         revenueData: revenuePerDay,
-        labels: dates.map(d => new Date(d).toLocaleDateString()),
+        labels: Array.from({length: daysToFetch}, (_, i) => {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + i);
+          return d.toLocaleDateString();
+        }),
         categoryLabels: Object.keys(categories || {}),
-        revenueLabels: dates.map(d => new Date(d).toLocaleDateString())
+        revenueLabels: Array.from({length: daysToFetch}, (_, i) => {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + i);
+          return d.toLocaleDateString();
+        })
       });
 
     } catch (error) {
@@ -253,7 +291,7 @@ export default function AdminDashboard() {
             {stats.recentRequests.slice(0, 3).map((request) => (
               <div key={request.id} className="text-sm">
                 <p className="text-gray-600">
-                  New request for {request.products?.name || 'Unknown Product'}
+                  New request for {request.product?.name || 'Unknown Product'}
                   <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                     request.status === 'approved' ? 'bg-green-100 text-green-800' : 
@@ -362,12 +400,12 @@ export default function AdminDashboard() {
                 <tr key={request.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {request.users?.email || 'Unknown User'}
+                      {request.customer?.email || 'Unknown User'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{request.product?.name || 'N/A'}</div>
-                    <div className="text-sm text-gray-500">Qty: {request.quantity || 'N/A'}</div>
+                    <div className="text-sm text-gray-900">{request.product?.name}</div>
+                    <div className="text-sm text-gray-500">Qty: {request.quantity}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

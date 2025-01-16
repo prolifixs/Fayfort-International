@@ -7,34 +7,16 @@ import ProtectedRoute from '@/app/components/ProtectedRoute';
 import RequestsTable from '@/app/components/RequestsTable';
 import { toast } from 'react-hot-toast';
 import type { Database } from '@/app/components/types/database.types';
+import { RequestWithRelations, SortField } from '../components/types/request.types';
+import RequestFilters from '@/app/components/RequestFilters';
 
-interface Request {
-  id: string;
-  product_id: string;
-  user_id: string;
-  customer_id: string;
-  quantity: number;
-  budget: number;
-  notes: string | null;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-  updated_at: string;
-  product: {
-    name: string;
-    category: string;
-    image_url: string | null;
-  };
-  user: {
-    email: string;
-  };
-}
+type Request = RequestWithRelations;
 
-type SortField = 'created_at' | 'status' | 'product.name' | 'user.email';
 type SortOrder = 'asc' | 'desc';
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
 
 export default function RequestPage() {
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [requests, setRequests] = useState<RequestWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -42,6 +24,7 @@ export default function RequestPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [filteredRequests, setFilteredRequests] = useState<RequestWithRelations[]>([]);
 
   const itemsPerPage = 10;
   const supabase = createClientComponentClient<Database>();
@@ -62,54 +45,56 @@ export default function RequestPage() {
 
   useEffect(() => {
     fetchRequests();
-  }, [currentPage, sortField, sortOrder, statusFilter, searchQuery]);
+  }, []);
+
+  useEffect(() => {
+    // Initialize filteredRequests with all requests
+    setFilteredRequests(requests);
+  }, [requests]);
 
   const fetchRequests = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error('Not authenticated');
-
-      let query = supabase
+      setLoading(true);
+      const { data, error } = await supabase
         .from('requests')
         .select(`
-          *,
-          product:products (
-            name,
-            category
-          ),
-          user:users (
+          id,
+          status,
+          created_at,
+          quantity,
+          budget,
+          customer_id,
+          product_id,
+          customer:users!left (
+            id,
             email
+          ),
+          product:products!requests_product_id_fkey (
+            id,
+            name
           )
-        `, { count: 'exact' });
-
-      // Apply filters
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      if (searchQuery) {
-        query = query.or(`
-          product.name.ilike.%${searchQuery}%,
-          user.email.ilike.%${searchQuery}%
-        `);
-      }
-
-      // Apply pagination
-      const from = (currentPage - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-
-      // Apply sorting
-      const { data, error, count } = await query
-        .order(sortField, { ascending: sortOrder === 'asc' })
-        .range(from, to);
+        `)
+        .order(sortField, { ascending: sortOrder === 'asc' });
 
       if (error) throw error;
-
-      setRequests(data || []);
-      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+      setRequests(data?.map(item => ({
+        id: item.id,
+        status: item.status,
+        created_at: item.created_at,
+        quantity: item.quantity,
+        budget: item.budget,
+        product: {
+          id: item.product?.[0]?.id || item.product_id,
+          name: item.product?.[0]?.name || 'Unknown'
+        },
+        customer: {
+          id: item.customer?.[0]?.id || item.customer_id,
+          email: item.customer?.[0]?.email || 'Unknown'
+        }
+      })) || []);
     } catch (err) {
       console.error('Error fetching requests:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to fetch requests');
+      toast.error('Failed to fetch requests');
     } finally {
       setLoading(false);
     }
@@ -153,6 +138,20 @@ export default function RequestPage() {
     }
   };
 
+  const handleFilterChange = (filters: any) => {
+    const filtered = requests.filter(request => {
+      const matchesSearch = !filters.search || 
+        request.id.toLowerCase().includes(filters.search.toLowerCase()) ||
+        request.product.name.toLowerCase().includes(filters.search.toLowerCase());
+      const matchesStatus = filters.status === 'all' || request.status === filters.status;
+      const matchesDateRange = (!filters.dateRange.start || new Date(request.created_at) >= filters.dateRange.start) &&
+        (!filters.dateRange.end || new Date(request.created_at) <= filters.dateRange.end);
+      
+      return matchesSearch && matchesStatus && matchesDateRange;
+    });
+    setFilteredRequests(filtered);
+  };
+
   return (
     <ProtectedRoute allowedRoles={['admin', 'supplier']}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -162,26 +161,7 @@ export default function RequestPage() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="mt-4 flex flex-col sm:flex-row gap-4">
-          <input
-            type="text"
-            placeholder="Search requests..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as FilterStatus)}
-            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
+        <RequestFilters onFilterChange={handleFilterChange} />
 
         {loading ? (
           <div className="mt-8 flex justify-center">
@@ -189,7 +169,7 @@ export default function RequestPage() {
           </div>
         ) : (
           <RequestsTable
-            requests={requests}
+            requests={filteredRequests}
             onStatusUpdate={handleStatusChange}
             onSort={handleSort}
             sortField={sortField}

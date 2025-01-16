@@ -1,3 +1,5 @@
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
 interface Notification {
@@ -58,3 +60,22 @@ class NotificationService {
 }
 
 export const notificationService = new NotificationService(); 
+
+export async function createNotification(notification: {
+  type: string;
+  content: string;
+  reference_id: string;
+  reference_type: string;
+}) {
+  const supabase = createClientComponentClient();
+  const { data: user } = await supabase.auth.getUser();
+  
+  return await supabase
+    .from('notifications')
+    .insert({
+      ...notification,
+      user_id: user.user?.id,
+      read_status: false,
+      created_at: new Date().toISOString()
+    });
+} 

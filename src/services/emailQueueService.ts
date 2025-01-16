@@ -1,53 +1,63 @@
-interface QueuedEmail {
+import { Resend } from 'resend';
+import { EmailQueueItem } from '@/app/components/types/invoice';
+
+interface QueuedEmail extends EmailQueueItem {
   id: string;
   to: string;
   subject: string;
   html: string;
+  attachments?: Array<{
+    filename: string;
+    path?: string;
+    content?: Buffer;
+  }>;
   attempts: number;
   lastAttempt: number | null;
   status: 'pending' | 'processing' | 'failed' | 'sent';
+  createdAt: number;
 }
 
 class EmailQueueService {
-  private readonly STORAGE_KEY = 'email_queue';
+  private readonly QUEUE_KEY = 'email_queue';
   private readonly MAX_ATTEMPTS = 3;
-  private readonly RETRY_DELAY = 5000; // 5 seconds
+  private readonly RETRY_DELAY = 5 * 60 * 1000; // 5 minutes
   private isProcessing = false;
 
   constructor() {
-    // Start processing queue when service is instantiated
-    this.processQueue();
+    if (typeof window !== 'undefined') {
+      this.processQueue();
+    }
   }
 
-  private getQueue(): QueuedEmail[] {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  }
-
-  private saveQueue(queue: QueuedEmail[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(queue));
-  }
-
-  async addToQueue(email: Omit<QueuedEmail, 'id' | 'attempts' | 'lastAttempt' | 'status'>): Promise<string> {
+  async addToQueue(email: Omit<QueuedEmail, 'id' | 'status' | 'attempts' | 'lastAttempt' | 'createdAt'>) {
     const queue = this.getQueue();
     const newEmail: QueuedEmail = {
       ...email,
-      id: Math.random().toString(36).substring(2),
+      id: crypto.randomUUID(),
+      status: 'pending',
       attempts: 0,
       lastAttempt: null,
-      status: 'pending'
+      createdAt: Date.now()
     };
 
     queue.push(newEmail);
     this.saveQueue(queue);
-    
-    // Trigger queue processing
     this.processQueue();
-    
     return newEmail.id;
   }
 
-  private async processQueue(): Promise<void> {
+  private getQueue(): QueuedEmail[] {
+    if (typeof window === 'undefined') return [];
+    const queueData = localStorage.getItem(this.QUEUE_KEY);
+    return queueData ? JSON.parse(queueData) : [];
+  }
+
+  private saveQueue(queue: QueuedEmail[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(this.QUEUE_KEY, JSON.stringify(queue));
+  }
+
+  private async processQueue() {
     if (this.isProcessing) return;
     this.isProcessing = true;
 
@@ -55,7 +65,7 @@ class EmailQueueService {
       const queue = this.getQueue();
       const pendingEmails = queue.filter(email => 
         email.status === 'pending' && 
-        (email.lastAttempt === null || Date.now() - email.lastAttempt > this.RETRY_DELAY)
+        (!email.lastAttempt || Date.now() - email.lastAttempt > this.RETRY_DELAY)
       );
 
       for (const email of pendingEmails) {
@@ -65,13 +75,16 @@ class EmailQueueService {
           email.lastAttempt = Date.now();
           this.saveQueue(queue);
 
-          // Simulate sending email
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Initialize Resend only when needed
+          const resend = new Resend(process.env.NEXT_PUBLIC_RESEND_API_KEY);
           
-          // Simulate random failure (20% chance)
-          if (Math.random() < 0.2) {
-            throw new Error('Simulated email sending failure');
-          }
+          await resend.emails.send({
+            from: 'Fayfort Enterprise <notifications@your-domain.com>',
+            to: email.to,
+            subject: email.subject,
+            html: email.html,
+            attachments: email.attachments
+          });
 
           email.status = 'sent';
         } catch (error) {
@@ -87,12 +100,10 @@ class EmailQueueService {
         this.saveQueue(queue);
       }
 
-      // Clean up old sent/failed emails after 24 hours
       this.cleanup();
     } finally {
       this.isProcessing = false;
-
-      // Schedule next processing if there are pending emails
+      
       const remainingPending = this.getQueue().some(email => email.status === 'pending');
       if (remainingPending) {
         setTimeout(() => this.processQueue(), this.RETRY_DELAY);
@@ -100,13 +111,12 @@ class EmailQueueService {
     }
   }
 
-  private cleanup(): void {
-    const ONE_DAY = 86400000; // 24 hours in milliseconds
+  private cleanup() {
+    const ONE_DAY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     const queue = this.getQueue();
     const activeEmails = queue.filter(email => {
       if (email.status === 'pending' || email.status === 'processing') return true;
-      if (!email.lastAttempt) return false;
-      return Date.now() - email.lastAttempt < ONE_DAY;
+      return Date.now() - email.createdAt < ONE_DAY;
     });
 
     this.saveQueue(activeEmails);
