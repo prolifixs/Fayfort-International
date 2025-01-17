@@ -1,53 +1,40 @@
-import { InvoiceWithItems } from '@/app/components/types/invoice';
+import { Invoice } from '@/app/components/types/invoice'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-
-interface InvoiceItemResponse {
-  id: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  product: {
-    name: string;
-    description: string;
-  }
-}
-
-// Add type for API response
-interface SupabaseInvoiceResponse {
-  id: string;
-  user: {
-    name: string;
-    email: string;
-  };
-  items: InvoiceItemResponse[];
-  [key: string]: any;
-}
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   const supabase = createRouteHandlerClient({ cookies })
-  
+
   try {
-    console.log('Fetching invoice:', params.id);
-    
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { data, error } = await supabase
       .from('invoices')
       .select(`
         *,
-        items:invoice_items (
+        invoice_items (
           id,
           quantity,
           unit_price,
           total_price,
-          product:products (name, description)
+          product:products (
+            name,
+            description,
+            category
+          )
         ),
         request:requests (
           id,
           customer:users (
+            id,
             name,
             email
           )
@@ -56,47 +43,45 @@ export async function GET(
       .eq('id', params.id)
       .single()
 
-    console.log('Raw response:', { data, error });
+    if (error) throw error
 
-    if (error) {
-      console.error('Supabase error:', error);
-      throw error;
-    }
-    
-    if (!data) {
-      console.error('No data found for invoice:', params.id);
-      throw new Error('Invoice not found');
-    }
+    // Fetch shipping address separately
+    if (data?.request?.customer?.id) {
+      const { data: addressData } = await supabase
+        .from('shipping_address')
+        .select('*')
+        .eq('user_id', data.request.customer.id)
+        .eq('is_default', true)
+        .single()
 
-    const transformedData = {
-      id: data.id,
-      request_id: data.request_id,
-      user_id: data.user_id,
-      status: data.status,
-      amount: data.amount,
-      due_date: data.due_date,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      pdf_url: data.pdf_url,
-      customer_name: data.request?.customer?.name || '',
-      customer_email: data.request?.customer?.email || '',
-      items: (data.items || []).map((item: InvoiceItemResponse) => ({
-        id: item.id,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total_price: item.total_price,
-        product: {
-          name: item.product?.name || '',
-          description: item.product?.description || ''
+      // Transform data with customer information
+      const transformedData: Invoice = {
+        id: data.id,
+        request_id: data.request_id,
+        user_id: data.user_id,
+        status: data.status,
+        amount: data.amount,
+        due_date: data.due_date,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        pdf_url: data.pdf_url,
+        invoice_items: data.invoice_items || [],
+        request: {
+          id: data.request?.id,
+          customer: {
+            name: data.request?.customer?.name || 'N/A',
+            email: data.request?.customer?.email || 'N/A',
+            shipping_address: addressData || undefined
+          }
         }
-      }))
-    }
+      }
 
-    return NextResponse.json(transformedData)
+      return NextResponse.json(transformedData)
+    }
   } catch (error) {
-    console.error('Detailed error:', error);
+    console.error('Error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error fetching invoice' },
+      { error: 'Failed to fetch invoice' },
       { status: 500 }
     )
   }

@@ -134,4 +134,6 @@ export function RequestDetailsModal({ requestId, onClose }: RequestDetailsModalP
       </DialogContent>
     </Dialog>
   )
-} 
+}
+
+export type { RequestDetails } 

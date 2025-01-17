@@ -1,29 +1,36 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
-import { InvoiceDetail } from '@/app/components/invoice/InvoiceDetail'
-import { ArrowLeft } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { PDFPreview } from '@/app/components/invoice/PDFPreview'
 import { Invoice } from '@/app/components/types/invoice'
+import { ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
-export default function InvoicePage({ params }: { params: { id: string } }) {
+export default function InvoicePreviewPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchInvoice = async () => {
       try {
-        const response = await fetch(`/api/invoices/${params.id}`)
+        const response = await fetch(`/api/invoices/${params.id}/preview`)
+        if (!response.ok) throw new Error('Failed to fetch invoice')
         const data = await response.json()
+        console.log('📥 Preview: Fetched invoice data:', data)
         setInvoice(data)
       } catch (error) {
         console.error('Failed to fetch invoice:', error)
+      } finally {
+        setLoading(false)
       }
     }
     fetchInvoice()
   }, [params.id])
 
-  if (!invoice) return <div>Loading...</div>
+  if (loading || !invoice) {
+    return <div>Loading...</div>
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -34,13 +41,10 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
             className="flex items-center text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Dashboard
+            Back to Invoice
           </button>
         </div>
-
-        <div className="bg-white rounded-lg shadow">
-          <InvoiceDetail invoiceId={params.id} />
-        </div>
+        <PDFPreview invoice={invoice} />
       </div>
     </div>
   )

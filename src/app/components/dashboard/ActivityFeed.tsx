@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { StatusBadge } from './StatusBadge'
 import { useToast } from '@/hooks/useToast'
+import { useRouter } from 'next/navigation'
 
 interface Activity {
   id: string
@@ -19,6 +20,7 @@ interface Activity {
 }
 
 export function ActivityFeed() {
+  const router = useRouter()
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
@@ -78,6 +80,12 @@ export function ActivityFeed() {
     }
   }
 
+  const handleActivityClick = (activity: Activity) => {
+    if (activity.type === 'invoice_generated' && activity.metadata.invoice_id) {
+      router.push(`/dashboard/invoices/${activity.metadata.invoice_id}`)
+    }
+  }
+
   function renderBadges(activity: Activity) {
     const badges = []
 
@@ -122,7 +130,10 @@ export function ActivityFeed() {
                   aria-hidden="true"
                 />
               ) : null}
-              <div className="relative flex space-x-3">
+              <div 
+                className="relative flex space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2"
+                onClick={() => handleActivityClick(activity)}
+              >
                 <div>
                   <span className="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center ring-8 ring-white">
                     {/* Icon based on activity type */}

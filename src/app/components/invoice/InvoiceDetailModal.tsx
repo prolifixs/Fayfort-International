@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Mail, X } from "lucide-react"
+import { Download, Eye, Mail, X } from "lucide-react"
 import { formatCurrency } from "@/app/components/lib/utils"
 import { Invoice } from '@/app/components/types/invoice'
 import { PDFPreview } from './PDFPreview'
 import { emailService } from '@/services/emailService'
 import { createNotification } from '@/services/notificationService'
+import { InvoiceStatusBadge } from './InvoiceStatusBadge'
 
 interface InvoiceDetailModalProps {
   invoice: Invoice;

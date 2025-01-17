@@ -67,11 +67,15 @@ export function InvoicePDF({ invoice }: Props) {
           <Text>Bill To:</Text>
           <Text>{invoice.request.customer.name}</Text>
           <Text>{invoice.request.customer.email}</Text>
-          <Text>{invoice.request.customer.shipping_address?.street_address}</Text>
-          <Text>
-            {invoice.request.customer.shipping_address?.city}, {invoice.request.customer.shipping_address?.state} {invoice.request.customer.shipping_address?.postal_code}
-          </Text>
-          <Text>{invoice.request.customer.shipping_address?.country}</Text>
+          {invoice.request.customer.shipping_address && (
+            <>
+              <Text>{invoice.request.customer.shipping_address.street_address}</Text>
+              <Text>
+                {invoice.request.customer.shipping_address.city}, {invoice.request.customer.shipping_address.state} {invoice.request.customer.shipping_address.postal_code}
+              </Text>
+              <Text>{invoice.request.customer.shipping_address.country}</Text>
+            </>
+          )}
         </View>
 
         <View style={styles.section}>

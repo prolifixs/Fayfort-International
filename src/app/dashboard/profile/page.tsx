@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { AddressForm } from './AddressForm'
 import { SocialMediaLinks } from './SocialMediaLinks'
 import { Preferences } from './Preferences'
-import { ProfileInfo } from '@/app/profile/ProfileInfo'
+import { ProfileInfo } from './ProfileInfo'
 import { useUsers } from '@/app/hooks/useUsers'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/app/components/ui/Tabs'
 
-export default function ProfilePage() {
+export function ProfilePage() {
   const { users, loading } = useUsers()
   const [activeTab, setActiveTab] = useState('profile')
 
@@ -23,10 +23,10 @@ export default function ProfilePage() {
   if (!user) return <div>Please sign in to view your profile.</div>
 
   return (
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto py-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 gap-4">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="profile">Profile Info</TabsTrigger>
           <TabsTrigger value="addresses">Addresses</TabsTrigger>
           <TabsTrigger value="social">Social Media</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
@@ -52,4 +52,6 @@ export default function ProfilePage() {
       </Tabs>
     </div>
   )
-} 
+}
+
+export default ProfilePage 

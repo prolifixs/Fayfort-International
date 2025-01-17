@@ -3,14 +3,37 @@ import { Invoice, InvoiceData } from '@/app/components/types/invoice';
 import { generateInvoicePDF } from '@/app/components/lib/pdf/generateInvoicePDF';
 
 export const pdfService = {
-  async generateAndStore(invoice: Invoice) {
+  async generateAndStore(invoice: Invoice): Promise<string> {
+    console.log('📝 PDFService: Starting PDF generation and storage');
     const supabase = createClientComponentClient();
     
     try {
-      // Generate PDF buffer directly
-      const pdfBuffer = await generateInvoicePDF(invoice as unknown as InvoiceData);
-      
-      // Convert Buffer to Blob
+      const transformedInvoice: InvoiceData = {
+        id: invoice.id,
+        status: invoice.status,
+        amount: invoice.amount,
+        created_at: invoice.created_at,
+        due_date: invoice.due_date,
+        request: {
+          customer: {
+            name: invoice.customer_name || invoice.user?.name || 'N/A',
+            email: invoice.customer_email || invoice.user?.email || 'N/A',
+            shipping_address: invoice.user?.shipping_address
+          }
+        },
+        invoice_items: invoice.invoice_items.map(item => ({
+          ...item,
+          product: {
+            ...item.product,
+            category: 'default'
+          }
+        }))
+      };
+
+      console.log('🔄 PDFService: Transformed invoice data:', transformedInvoice);
+      const pdfBuffer = await generateInvoicePDF(transformedInvoice);
+      console.log('✅ PDFService: PDF buffer generated');
+
       const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
       
       // Upload directly to Supabase storage
@@ -37,11 +60,12 @@ export const pdfService = {
 
       if (updateError) throw updateError;
 
+      console.log('📤 PDFService: PDF uploaded, URL:', publicUrl);
       return publicUrl;
 
     } catch (error) {
-      console.error('PDF generation/storage failed:', error);
-      throw new Error('PDF processing failed');
+      console.error('❌ PDFService: Failed:', error);
+      throw error;
     }
   }
 };
