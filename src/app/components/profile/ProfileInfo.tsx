@@ -77,7 +77,13 @@ export function ProfileInfo({ user }: ProfileInfoProps) {
         </div>
       )}
 
-      {isVisible && <Toast {...toastProps} onClose={onClose} />}
+      {isVisible && toastProps.message && (
+        <Toast 
+          message={toastProps.message} 
+          type={toastProps.type || 'success'} 
+          onClose={onClose} 
+        />
+      )}
     </div>
   )
 } 

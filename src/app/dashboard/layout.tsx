@@ -1,12 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sidebar } from '@/app/components/dashboard/Sidebar'
-import DashboardPage from './page'
-import RequestsPage from './requests/page'
-import NotificationsPage from './notifications/page'
-import { ProfilePage } from './profile/page'
-import SettingsPage from './settings/page'
 import { usePathname, useRouter } from 'next/navigation'
 import { InvoiceDetail } from '@/app/components/invoice/InvoiceDetail'
 import { Button } from '@/app/components/ui/button'
@@ -14,12 +9,26 @@ import { ChevronLeft } from 'lucide-react'
 
 type DashboardView = 'dashboard' | 'requests' | 'notifications' | 'profile' | 'settings'
 
-export function DashboardLayout() {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const [currentView, setCurrentView] = useState<DashboardView>('dashboard')
   const router = useRouter()
   const pathname = usePathname()
 
-  // Check if we're on an invoice route
+  // Update currentView based on pathname
+  useEffect(() => {
+    const path = pathname.split('/')[2] // Get second segment after /dashboard/
+    if (path && ['requests', 'notifications', 'profile', 'settings'].includes(path)) {
+      setCurrentView(path as DashboardView)
+    } else {
+      setCurrentView('dashboard')
+    }
+  }, [pathname])
+
+  // Handle invoice routes
   const invoiceMatch = pathname.match(/\/dashboard\/invoices\/(.+)/)
   if (invoiceMatch) {
     return (
@@ -44,36 +53,19 @@ export function DashboardLayout() {
     )
   }
 
-  // Regular dashboard views
-  const renderView = () => {
-    switch (currentView) {
-      case 'dashboard':
-        return <DashboardPage />
-      case 'requests':
-        return <RequestsPage />
-      case 'notifications':
-        return <NotificationsPage />
-      case 'profile':
-        return <ProfilePage />
-      case 'settings':
-        return <SettingsPage />
-      default:
-        return <DashboardPage />
-    }
-  }
-
   return (
     <div className="h-screen flex overflow-hidden">
-      <Sidebar onNavigate={setCurrentView} currentView={currentView} />
+      <Sidebar onNavigate={(view) => {
+        setCurrentView(view)
+        router.push(`/dashboard/${view}`)
+      }} currentView={currentView} />
       <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none">
         <div className="py-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-            {renderView()}
+            {children}
           </div>
         </div>
       </main>
     </div>
   )
 }
-
-export default DashboardLayout

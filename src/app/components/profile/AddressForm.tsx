@@ -1,5 +1,12 @@
-import { useState } from 'react'
+'use client'
+
+import { useState, useEffect } from 'react'
 import { useUsers } from '@/app/hooks/useUsers'
+import { useToast } from '@/app/hooks/useToast'
+import Toast from '@/app/components/Toast'
+import { AddressList } from './AddressList'
+import { z } from 'zod'
+import LoadingSpinner from '@/app/components/LoadingSpinner'
 
 interface Address {
   id: string
@@ -10,11 +17,23 @@ interface Address {
   country: string
   is_default: boolean
 }
+
+const addressSchema = z.object({
+  street_address: z.string().min(1, 'Street address is required'),
+  city: z.string().min(1, 'City is required'),
+  state: z.string().min(1, 'State is required'),
+  postal_code: z.string().min(1, 'Postal code is required'),
+  country: z.string().min(1, 'Country is required'),
+  is_default: z.boolean()
+})
+
 export function AddressForm() {
   const { users } = useUsers()
   const user = users?.[0] // Get current user
   const [addresses, setAddresses] = useState<Address[]>([])
   const [isAddingNew, setIsAddingNew] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast, isVisible, toastProps, onClose } = useToast()
   const [formData, setFormData] = useState({
     street_address: '',
     city: '',
@@ -23,20 +42,63 @@ export function AddressForm() {
     country: '',
     is_default: false
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [isSettingDefault, setIsSettingDefault] = useState<string | null>(null)
+
+  // Fetch addresses on component mount
+  useEffect(() => {
+    fetchAddresses()
+  }, [])
+
+  const fetchAddresses = async () => {
+    try {
+      const response = await fetch('/api/user/addresses')
+      if (!response.ok) throw new Error('Failed to fetch addresses')
+      const data = await response.json()
+      setAddresses(data)
+    } catch (error) {
+      toast({ 
+        message: 'Error fetching addresses', 
+        type: 'error' 
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
+    
     try {
+      // Validate form data
+      const validatedData = addressSchema.parse(formData)
+      
+      // Optimistic update
+      const tempId = `temp-${Date.now()}`
+      const newAddress = { ...validatedData, id: tempId }
+      setAddresses(prev => [...prev, newAddress])
+      
       const response = await fetch('/api/user/addresses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(validatedData)
       })
       
-      if (!response.ok) throw new Error('Failed to add address')
+      if (!response.ok) {
+        // Revert optimistic update
+        setAddresses(prev => prev.filter(addr => addr.id !== tempId))
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to add address')
+      }
       
-      const newAddress = await response.json()
-      setAddresses([...addresses, newAddress])
+      const savedAddress = await response.json()
+      // Replace temp address with saved one
+      setAddresses(prev => prev.map(addr => 
+        addr.id === tempId ? savedAddress : addr
+      ))
+      
       setIsAddingNew(false)
       setFormData({
         street_address: '',
@@ -46,25 +108,62 @@ export function AddressForm() {
         country: '',
         is_default: false
       })
-    } catch (error) {
-      console.error('Error adding address:', error)
+      toast({ message: 'Address added successfully', type: 'success' })
+    } catch (err) {
+      const error = err as Error
+      toast({ 
+        message: error.message || 'Error adding address', 
+        type: 'error' 
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleDelete = async (id: string) => {
+    setIsDeleting(id)
+    
+    // Optimistic update - remove address immediately
+    const previousAddresses = [...addresses]
+    setAddresses(addresses.filter(addr => addr.id !== id))
+    
     try {
       const response = await fetch(`/api/user/addresses/${id}`, {
         method: 'DELETE'
       })
       
-      if (!response.ok) throw new Error('Failed to delete address')
+      if (!response.ok) {
+        // Revert optimistic update
+        setAddresses(previousAddresses)
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to delete address')
+      }
       
-      setAddresses(addresses.filter(addr => addr.id !== id))
-    } catch (error) {
-      console.error('Error deleting address:', error)
+      toast({ 
+        message: 'Address deleted successfully', 
+        type: 'success' 
+      })
+    } catch (err) {
+      const error = err as Error
+      toast({ 
+        message: error.message || 'Error deleting address', 
+        type: 'error' 
+      })
+    } finally {
+      setIsDeleting(null)
     }
   }
+
   const handleSetDefault = async (id: string) => {
+    setIsSettingDefault(id)
+    
+    // Optimistic update - update default status immediately
+    const previousAddresses = [...addresses]
+    setAddresses(addresses.map(addr => ({
+      ...addr,
+      is_default: addr.id === id
+    })))
+    
     try {
       const response = await fetch(`/api/user/addresses/${id}`, {
         method: 'PUT',
@@ -72,14 +171,25 @@ export function AddressForm() {
         body: JSON.stringify({ is_default: true })
       })
       
-      if (!response.ok) throw new Error('Failed to set default address')
+      if (!response.ok) {
+        // Revert optimistic update
+        setAddresses(previousAddresses)
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to set default address')
+      }
       
-      setAddresses(addresses.map(addr => ({
-        ...addr,
-        is_default: addr.id === id
-      })))
-    } catch (error) {
-      console.error('Error setting default address:', error)
+      toast({ 
+        message: 'Default address updated', 
+        type: 'success' 
+      })
+    } catch (err) {
+      const error = err as Error
+      toast({ 
+        message: error.message || 'Error setting default address', 
+        type: 'error' 
+      })
+    } finally {
+      setIsSettingDefault(null)
     }
   }
 
@@ -95,46 +205,22 @@ export function AddressForm() {
         </button>
       </div>
 
-      {/* Address List */}
-      <div className="space-y-4">
-        {addresses.map(address => (
-          <div
-            key={address.id}
-            className="border rounded-lg p-4 flex justify-between items-start"
-          >
-            <div>
-              <p className="font-medium">
-                {address.street_address}
-                {address.is_default && (
-                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                    Default
-                  </span>
-                )}
-              </p>
-              <p className="text-gray-500">
-                {address.city}, {address.state} {address.postal_code}
-              </p>
-              <p className="text-gray-500">{address.country}</p>
-            </div>
-            <div className="space-x-2">
-              {!address.is_default && (
-                <button
-                  onClick={() => handleSetDefault(address.id)}
-                  className="text-indigo-600 hover:text-indigo-800"
-                >
-                  Set as Default
-                </button>
-              )}
-              <button
-                onClick={() => handleDelete(address.id)}
-                className="text-red-600 hover:text-red-800"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="animate-pulse space-y-4">
+          {[1, 2].map((n) => (
+            <div key={n} className="h-24 bg-gray-200 rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <AddressList
+          addresses={addresses}
+          onSetDefault={handleSetDefault}
+          onDelete={handleDelete}
+          isDeleting={isDeleting}
+          isSettingDefault={isSettingDefault}
+        />
+      )}
 
       {/* Add New Address Form */}
       {isAddingNew && (
@@ -229,12 +315,28 @@ export function AddressForm() {
             </button>
             <button
               type="submit"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
+              disabled={isSubmitting}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
-              Save Address
+              {isSubmitting ? (
+                <div className="flex items-center">
+                  <LoadingSpinner className="w-4 h-4 mr-2" />
+                  Adding...
+                </div>
+              ) : (
+                'Add Address'
+              )}
             </button>
           </div>
         </form>
+      )}
+
+      {isVisible && toastProps.message && (
+        <Toast 
+          message={toastProps.message} 
+          type={toastProps.type || 'success'} 
+          onClose={onClose} 
+        />
       )}
     </div>
   )
