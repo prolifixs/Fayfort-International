@@ -28,7 +28,10 @@ export async function GET(
           product:products (
             name,
             description,
-            category
+            category:categories (
+              id,
+              name
+            )
           )
         ),
         request:requests (

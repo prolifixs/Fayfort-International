@@ -28,14 +28,23 @@ export interface Database {
           id: string
           name: string
           description: string | null
-          category: string
+          category_id: string
           price_range: string
           image_url: string | null
           availability: boolean
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['products']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Insert: {
+          name: string
+          description?: string | null
+          category_id: string
+          price_range: string
+          image_url?: string | null
+          availability?: boolean
+          created_at?: string
+          updated_at?: string
+        }
         Update: Partial<Database['public']['Tables']['products']['Insert']>
       }
       requests: {
@@ -131,6 +140,32 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['invoices']['Row'], 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Database['public']['Tables']['invoices']['Insert']>
+      }
+      product_media: {
+        Row: {
+          id: string
+          product_id: string
+          url: string
+          media_type: 'image' | 'video'
+          is_primary: boolean
+          order_index: number
+          thumbnail_url?: string
+          created_at: string
+        }
+        Insert: {
+          product_id: string
+          url: string
+          media_type: 'image' | 'video'
+          is_primary?: boolean
+          order_index?: number
+          thumbnail_url?: string
+        }
+        Update: {
+          url?: string
+          is_primary?: boolean
+          order_index?: number
+          thumbnail_url?: string
+        }
       }
     }
     Views: {

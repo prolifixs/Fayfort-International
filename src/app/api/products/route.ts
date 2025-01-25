@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       .select('*', { count: 'exact' })
     
     if (category && category !== 'all') {
-      query = query.eq('category', category)
+      query = query.eq('category_id', category)
     }
     
     if (search) {

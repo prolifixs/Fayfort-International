@@ -3,35 +3,42 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
-import ProductFormModal from '@/app/components/ProductFormModal';
 import Pagination from '@/app/components/Pagination';
 import Toast from '@/app/components/Toast';
-import type { ProductFormData } from '@/app/components/ProductFormModal';
-import type { Database } from '@/app/components/types/database.types';
+import type { Database, TableRow } from '@/app/components/types/database.types';
 import DeleteConfirmationModal from '@/app/components/DeleteConfirmationModal';
+import { ProductTable } from '@/app/components/ProductTable/ProductTable';
+import { ProductForm, ProductFormData } from '@/app/components/ProductForm/ProductForm';
+import { Dialog } from '@headlessui/react';
+import { toast } from 'react-hot-toast';
+import { MediaService } from '@/services/MediaService';
+import { MediaUploadManager } from '@/services/MediaUploadManager';
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  price_range: string;
-  availability: boolean;
+type Product = TableRow<'products'> & {
+  category?: TableRow<'categories'>
+  media?: ProductMedia[]
 }
+type ProductMedia = TableRow<'product_media'>
+type Category = TableRow<'categories'>
 
-type SortField = 'name' | 'category' | 'price_range';
+type SortField = keyof Omit<Product, 'category' | 'media' | 'created_at' | 'updated_at'> | 'category_id';
 type SortOrder = 'asc' | 'desc';
 type ToastMessage = { type: 'success' | 'error'; message: string } | null;
 
+interface SortConfig {
+  field: SortField;
+  order: SortOrder;
+  priority: number;
+}
+
 export default function CatalogManagement() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [toast, setToast] = useState<ToastMessage>(null);
@@ -39,13 +46,16 @@ export default function CatalogManagement() {
   const [availabilityFilter, setAvailabilityFilter] = useState<string>('all');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingState, setLoadingState] = useState({ progress: 0, message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const productsPerPage = 10;
-  const supabase = createClientComponentClient();
+  const supabase = createClientComponentClient<Database>();
 
   useEffect(() => {
     fetchProducts();
-  }, [sortField, sortOrder]);
+  }, [sortConfigs]);
 
   useEffect(() => {
     const channel = supabase
@@ -65,22 +75,83 @@ export default function CatalogManagement() {
     };
   }, []);
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*');
+        
+        if (error) throw error;
+        setCategories(data || []);
+      } catch (e) {
+        console.error('Error fetching categories:', e);
+        showToast('error', 'Failed to load categories');
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   async function fetchProducts() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      console.log('🔍 Starting product fetch...');
+      let query = supabase
         .from('products')
-        .select('*')
-        .order(sortField, { ascending: sortOrder === 'asc' });
+        .select(`
+          *,
+          media:product_media(*),
+          category:categories!products_category_id_fkey(*)
+        `);
 
+      // Apply filters
+      if (categoryFilter !== 'all') {
+        query = query.eq('category_id', categoryFilter);
+      }
+
+      if (availabilityFilter !== 'all') {
+        query = query.eq('availability', availabilityFilter === 'active');
+      }
+
+      if (searchQuery) {
+        query = query.ilike('name', `%${searchQuery}%`);
+      }
+
+      // Apply sorting
+      sortConfigs.sort((a, b) => a.priority - b.priority);
+
+      // Add default sort by created_at if no other sorts are specified
+      if (sortConfigs.length === 0) {
+        query = query.order('created_at', { ascending: false });
+      } else {
+        // Apply existing sort configs
+        sortConfigs.forEach(config => {
+          if (config.field === 'category_id') {
+            query = query.order('categories!products_category_id_fkey(name)', { ascending: config.order === 'asc' });
+          } else {
+            query = query.order(config.field, { ascending: config.order === 'asc' });
+          }
+        });
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
+      
+      console.log('📦 Products fetched:', {
+        count: data?.length,
+        withMedia: data?.filter(p => p.media?.length > 0).length,
+        mediaUrls: data?.map(p => p.media?.map((m: ProductMedia) => m.url))
+      });
+      
       setProducts(data || []);
     } catch (e) {
+      console.error('❌ Error fetching products:', e);
       showToast('error', e instanceof Error ? e.message : 'An error occurred');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }
 
@@ -89,13 +160,10 @@ export default function CatalogManagement() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSort = (field: SortField) => {
-    if (field === sortField) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
-    }
+  const handleSort = async (newSortConfigs: SortConfig[]) => {
+    console.log('🔄 Sort triggered with configs:', newSortConfigs);
+    setSortConfigs(newSortConfigs);
+    await fetchProducts();
   };
 
   const handleSearch = (query: string) => {
@@ -167,36 +235,78 @@ export default function CatalogManagement() {
   };
 
   const handleProductSubmit = async (data: ProductFormData) => {
-    try {
-      if (editingProduct) {
-        const { error } = await supabase
-          .from('products')
-          .update({
-            ...data,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingProduct.id);
-        
-        if (error) throw error;
-        showToast('success', 'Product updated successfully');
-      } else {
-        const { error } = await supabase
-          .from('products')
-          .insert([{
-            ...data,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }]);
-        
-        if (error) throw error;
-        showToast('success', 'Product created successfully');
-      }
+    if (!isSubmitting) {
+      setIsSubmitting(true);
+      setLoadingState({ progress: 0, message: 'Starting...' });
       
-      await fetchProducts();
-      setIsModalOpen(false);
-      setEditingProduct(null);
-    } catch (e) {
-      showToast('error', e instanceof Error ? e.message : 'Failed to save product');
+      try {
+        let productId: string | undefined;
+
+        // Create or update product
+        if (editingProduct) {
+          setLoadingState({ progress: 70, message: 'Updating product...' });
+          const { error: productError } = await supabase
+            .from('products')
+            .update({
+              name: data.name,
+              description: data.description || null,
+              price_range: data.price_range,
+              category_id: data.category_id || null,
+              availability: data.availability || false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', editingProduct.id);
+          
+          if (productError) throw productError;
+          productId = editingProduct.id;
+        } else {
+          setLoadingState({ progress: 70, message: 'Creating new product...' });
+          const { data: newProduct, error: productError } = await supabase
+            .from('products')
+            .insert([{
+              name: data.name,
+              description: data.description || null,
+              price_range: data.price_range,
+              category_id: data.category_id || null,
+              availability: data.availability || false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+          
+          if (productError) throw productError;
+          productId = newProduct.id;
+        }
+
+        // Handle all media types
+        if (data?.media?.length) {
+          setLoadingState({ progress: 85, message: 'Processing media files...' });
+          const uploadManager = new MediaUploadManager(supabase);
+          
+          for (const mediaItem of data.media) {
+            if (mediaItem.id.startsWith('temp-')) {
+              if (!productId) throw new Error('Product ID is required');
+              await uploadManager.commitMedia(mediaItem, productId);
+            }
+          }
+        }
+
+        setLoadingState({ progress: 100, message: 'Completing...' });
+        showToast('success', editingProduct ? 'Product updated successfully' : 'Product created successfully');
+        await fetchProducts();
+        setIsModalOpen(false);
+      } catch (error) {
+        console.error('Product submission error:', error);
+        setLoadingState(prev => ({
+          ...prev,
+          error: 'Failed to save product. Please try again.'
+        }));
+        showToast('error', 'Failed to save product');
+      } finally {
+        setIsSubmitting(false);
+        setLoadingState({ progress: 0, message: '' });
+      }
     }
   };
 
@@ -225,10 +335,10 @@ export default function CatalogManagement() {
   const filteredProducts = products.filter(product => {
     const matchesSearch = 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase());
+      (product.category?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = 
-      categoryFilter === 'all' || product.category === categoryFilter;
+      categoryFilter === 'all' || product.category_id === categoryFilter;
     
     const matchesAvailability = 
       availabilityFilter === 'all' || 
@@ -236,9 +346,6 @@ export default function CatalogManagement() {
 
     return matchesSearch && matchesCategory && matchesAvailability;
   });
-
-  // Get unique categories for filter
-  const categories = Array.from(new Set(products.map(p => p.category)));
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
@@ -289,7 +396,9 @@ export default function CatalogManagement() {
         >
           <option value="all">All Categories</option>
           {categories.map(category => (
-            <option key={category} value={category}>{category}</option>
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
           ))}
         </select>
         <select
@@ -303,121 +412,23 @@ export default function CatalogManagement() {
         </select>
       </div>
 
-      {/* Table */}
-      {isLoading ? (
+      {/* Product Table */}
+      {loading ? (
         <LoadingSpinner />
       ) : error ? (
         <div className="text-red-500">{error}</div>
       ) : (
         <>
-          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedProducts.length === currentProducts.length}
-                      onChange={toggleAllProducts}
-                      className="rounded border-gray-300"
-                    />
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('name')}
-                  >
-                    <div className="flex items-center">
-                      Product Name
-                      {sortField === 'name' && (
-                        <span className="ml-2">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('category')}
-                  >
-                    <div className="flex items-center">
-                      Category
-                      {sortField === 'category' && (
-                        <span className="ml-2">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('price_range')}
-                  >
-                    <div className="flex items-center">
-                      Price Range
-                      {sortField === 'price_range' && (
-                        <span className="ml-2">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {currentProducts.map((product) => (
-                  <tr key={product.id}>
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedProducts.includes(product.id)}
-                        onChange={() => toggleProductSelection(product.id)}
-                        className="rounded border-gray-300"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                      <div className="text-sm text-gray-500">{product.description}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{product.category}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{product.price_range}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        product.availability 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {product.availability ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button 
-                        onClick={() => handleEdit(product)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-3"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(product)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ProductTable 
+            products={currentProducts}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onSort={handleSort}
+            sortConfigs={sortConfigs}
+            selectedProducts={selectedProducts}
+            onSelectProduct={toggleProductSelection}
+            onSelectAll={toggleAllProducts}
+          />
           
           <div className="mt-4">
             <Pagination
@@ -429,14 +440,22 @@ export default function CatalogManagement() {
         </>
       )}
 
-      <ProductFormModal
-        isOpen={isModalOpen}
+      {/* Product Form Modal */}
+      <Dialog
+        open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={handleProductSubmit}
-        mode={editingProduct ? 'edit' : 'create'}
-        initialData={editingProduct || undefined}
-        onSuccess={refreshProducts}
-      />
+        className="relative z-50"
+      >
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="bg-white rounded-lg p-6 max-w-4xl w-full">
+            <ProductForm
+              initialProduct={editingProduct || undefined}
+              onSubmit={handleProductSubmit}
+            />
+          </Dialog.Panel>
+        </div>
+      </Dialog>
 
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}

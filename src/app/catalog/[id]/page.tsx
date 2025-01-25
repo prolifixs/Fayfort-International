@@ -6,20 +6,14 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Link from 'next/link';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import RequestFormModal from '@/app/components/RequestFormModal';
+import { MediaGallery } from '@/app/components/MediaGallery/MediaGallery';
 import type { RequestFormData } from '@/app/components/RequestFormModal';
 import { toast } from 'react-hot-toast';
 import ProtectedRoute from '@/app/components/ProtectedRoute';
+import type { TableRow } from '@/app/components/types/database.types';
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  price_range: string;
-  image_url: string;
-  availability: boolean;
-  specifications?: Record<string, any>;
-}
+type Product = TableRow<'products'>
+type ProductMedia = TableRow<'product_media'>
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -40,7 +34,10 @@ export default function ProductDetailPage() {
 
         const { data, error } = await supabase
           .from('products')
-          .select('*')
+          .select(`
+            *,
+            media:product_media(*)
+          `)
           .eq('id', params.id)
           .single();
 
@@ -115,17 +112,20 @@ export default function ProductDetailPage() {
           </div>
         ) : (
           <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
-            {/* Image Section */}
+            {/* Media Gallery Section */}
             <div className="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden">
-              <img
-                src={product.image_url || '/placeholder.jpg'}
-                alt={product.name}
-                className="w-full h-full object-center object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = '/placeholder.jpg';
-                  console.log('Image failed to load:', product.image_url);
-                }}
-              />
+              {(product.media ?? []).length > 0 ? (
+                <MediaGallery media={product.media ?? []} />
+              ) : (
+                <img
+                  src={product.image_url || '/placeholder.jpg'}
+                  alt={product.name}
+                  className="w-full h-full object-center object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder.jpg';
+                  }}
+                />
+              )}
             </div>
 
             {/* Product Info */}

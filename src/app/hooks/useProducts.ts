@@ -120,7 +120,7 @@ async function fetchProductsFromSupabase(options: ProductOptions) {
     query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
   }
   if (category && category !== 'all') {
-    query = query.eq('category', category)
+    query = query.eq('category_id', category)
   }
   if (typeof availability === 'boolean') {
     query = query.eq('availability', availability)

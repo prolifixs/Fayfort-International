@@ -7,17 +7,18 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import Pagination from '@/app/components/Pagination';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import type { Database } from '@/app/components/types/database.types';
+import type { Database, TableRow } from '@/app/components/types/database.types';
+import { ProductCard } from '@/app/components/ProductCard/ProductCard';
+import { useRouter } from 'next/navigation';
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  price_range: string;
-  image_url: string;
-  availability: boolean;
+type ProductMedia = TableRow<'product_media'>;
+
+type Product = TableRow<'products'> & {
+  category?: TableRow<'categories'>
+  media?: ProductMedia[]
 }
+
+type Category = TableRow<'categories'>;
 
 export default function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,8 +28,10 @@ export default function CatalogPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 10;
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const supabase = createClientComponentClient<Database>();
+  const router = useRouter();
 
   // Real-time subscription setup
   useEffect(() => {
@@ -63,14 +66,24 @@ export default function CatalogPage() {
 
       let query = supabase
         .from('products')
-        .select('*')
-        .eq('availability', true)
-        .order('created_at', { ascending: false });
+        .select(`
+          *,
+          media:product_media(*),
+          categories!products_category_id_fkey (
+            id,
+            name
+          )
+        `);
 
-      const { data, error } = await query;
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       setProducts(data || []);
+
+      const uniqueCategories = Array.from(
+        new Set(products.map(p => p.category))
+      ).filter((category): category is Category => category !== null);
+      setCategories(uniqueCategories);
     } catch (err) {
       console.error('Error fetching products:', err);
       setError(err instanceof Error ? err.message : 'Failed to load products');
@@ -83,12 +96,11 @@ export default function CatalogPage() {
   // Filter products
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+                         (product.description ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || product.category_id === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const categories = Array.from(new Set(products.map(p => p.category)));
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const currentProducts = filteredProducts.slice(
     (currentPage - 1) * productsPerPage,
@@ -116,7 +128,7 @@ export default function CatalogPage() {
             >
               <option value="all">All Categories</option>
               {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+                <option key={category.id} value={category.id}>{category.name}</option>
               ))}
             </select>
           </div>
@@ -131,43 +143,11 @@ export default function CatalogPage() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {currentProducts.map((product) => (
-                <Link 
-                  href={`/catalog/${product.id}`} 
+                <ProductCard 
                   key={product.id}
-                  className="group"
-                >
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                    <div className="aspect-w-4 aspect-h-3">
-                      <img
-                        src={product.image_url || '/placeholder.jpg'}
-                        alt={product.name}
-                        className="h-48 w-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = '/placeholder.jpg';
-                          console.log('Image failed to load:', product.image_url);
-                        }}
-                      />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600">
-                        {product.name}
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {product.description.length > 100 
-                          ? `${product.description.substring(0, 100)}...` 
-                          : product.description}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-900">
-                          {product.price_range}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {product.category}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
+                  product={product}
+                  onClick={() => router.push(`/catalog/${product.id}`)}
+                />
               ))}
             </div>
 
