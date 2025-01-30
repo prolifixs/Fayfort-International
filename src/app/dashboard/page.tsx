@@ -9,6 +9,10 @@ import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useToast } from '@/hooks/useToast'
 import { Database } from '@/app/components/types/database.types'
+import { NewArrivals } from '@/app/components/catalog/NewArrivals'
+import { useRouter } from 'next/navigation'
+import { FayfayAIPreview } from '../components/dashboard/FayfayAIPreview'
+import { RequestTabs } from '../components/dashboard/RequestTabs'
 
 type Product = Database['public']['Tables']['products']['Row']
 
@@ -20,6 +24,7 @@ export default function DashboardPage() {
   const { toast } = useToast()
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const router = useRouter()
 
   const handleStatusUpdate = async (requestId: string, newStatus: 'approved' | 'rejected') => {
     try {
@@ -112,19 +117,31 @@ export default function DashboardPage() {
                 {selectedRequestId ? (
                   <RequestFlow requestId={selectedRequestId} />
                 ) : (
-                  <div className="bg-white shadow rounded-lg p-6">
-                    <p className="text-gray-500 text-center">
-                      Select a request to view details
-                    </p>
-                  </div>
+                  <FayfayAIPreview />
                 )}
               </div>
             </div>
 
-            {/* Requests Table */}
+            {/* New Arrivals Section */}
             <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">My Requests</h2>
-              <UserRequestsTable />
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900">New Products</h2>
+                <button
+                  onClick={() => router.push('/catalog')}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  View All →
+                </button>
+              </div>
+              <NewArrivals />
+            </div>
+
+            {/* Requests Tabs */}
+            <div className="bg-white shadow rounded-lg">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">My Requests</h2>
+              </div>
+              <RequestTabs />
             </div>
           </div>
         </div>

@@ -1,3 +1,5 @@
+import { InvoiceStatus } from "./invoice"
+
 export type Json =
   | string
   | number
@@ -32,6 +34,7 @@ export interface Database {
           price_range: string
           image_url: string | null
           availability: boolean
+          status: 'active' | 'inactive'
           created_at: string
           updated_at: string
         }
@@ -42,6 +45,7 @@ export interface Database {
           price_range: string
           image_url?: string | null
           availability?: boolean
+          status?: 'active' | 'inactive'
           created_at?: string
           updated_at?: string
         }
@@ -55,6 +59,7 @@ export interface Database {
           quantity: number
           budget: number
           status: 'pending' | 'approved' | 'rejected' | 'fulfilled'
+          resolution_status: 'pending' | 'notified' | 'resolved'
           notes: string | null
           created_at: string
           updated_at: string
@@ -146,7 +151,7 @@ export interface Database {
           id: string
           product_id: string
           url: string
-          media_type: 'image' | 'video'
+          media_type: 'video' | 'image'
           is_primary: boolean
           order_index: number
           thumbnail_url?: string
@@ -155,7 +160,7 @@ export interface Database {
         Insert: {
           product_id: string
           url: string
-          media_type: 'image' | 'video'
+          media_type: 'video' | 'image'
           is_primary?: boolean
           order_index?: number
           thumbnail_url?: string
@@ -166,6 +171,21 @@ export interface Database {
           order_index?: number
           thumbnail_url?: string
         }
+      }
+      shipping_address: {
+        Row: {
+          id: string
+          user_id: string
+          street_address: string
+          city: string
+          state: string
+          postal_code: string
+          country: string
+          is_default: boolean
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['shipping_address']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['shipping_address']['Insert']>
       }
     }
     Views: {
@@ -181,14 +201,11 @@ export interface Database {
 }
 
 // Helper types
-export type TableRow<T extends keyof Database['public']['Tables']> = 
-  Database['public']['Tables'][T]['Row']
+export type TableRow<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
 
-export type TableInsert<T extends keyof Database['public']['Tables']> = 
-  Database['public']['Tables'][T]['Insert']
+export type TableInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
 
-export type TableUpdate<T extends keyof Database['public']['Tables']> = 
-  Database['public']['Tables'][T]['Update'] 
+export type TableUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update']
 
 export type SupabaseRequestResponse = {
   id: string;
@@ -226,8 +243,65 @@ export function isSupabaseRequestResponse(obj: any): obj is SupabaseRequestRespo
     && typeof obj.id === 'string'
     && Array.isArray(obj.product)
     && Array.isArray(obj.customer);
-} 
+}
 
 export type Activity = Database['public']['Tables']['activity_log']['Row']
 export type Notification = Database['public']['Tables']['notifications']['Row']
-export type NotificationType = Notification['type'] 
+export type NotificationType = Notification['type']
+
+export type RequestStatus = 'pending' | 'notified' | 'resolved'
+export type ProductStatus = 'active' | 'inactive'
+
+export interface User extends TableRow<'users'> {
+  email: string
+}
+
+export interface Request extends TableRow<'requests'> {
+  user: User
+  resolution_status: RequestStatus
+  created_at: string
+  status: 'pending' | 'approved' | 'rejected'
+  invoice_status: 'paid' | 'unpaid'
+  notification_sent: boolean
+}
+
+export type ProductMedia = TableRow<'product_media'>
+export type Category = TableRow<'categories'>
+
+// Base product type (for simple cases)
+interface BaseProduct extends TableRow<'products'> {
+  media?: ProductMedia[]
+  category?: Category
+}
+
+// Active product handling
+export interface ActiveProduct extends BaseProduct {
+  requests: (Request & {
+    invoice_status: 'paid' | 'unpaid'
+    status: 'pending' | 'approved' | 'rejected'
+  })[]
+}
+
+// Inactive product handling
+export interface InactiveProduct extends BaseProduct {
+  requests: (Request & {
+    invoice_status: InvoiceStatus
+    resolution_status: RequestStatus
+    notification_sent: boolean
+  })[]
+}
+
+// Update the Product type
+export type Product = ActiveProduct | InactiveProduct
+
+export interface ActivityLog extends TableRow<'activity_log'> {
+  id: string
+  type: 'status_change' | 'notification' | 'resolution'
+  description: string
+  created_at: string
+}
+
+// Add this type definition
+export type ProductWithRequests = BaseProduct & {
+  requests: Request[]
+} 

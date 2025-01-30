@@ -57,7 +57,8 @@ export default function DashboardLayout({
     <div className="h-screen flex overflow-hidden">
       <Sidebar onNavigate={(view) => {
         setCurrentView(view)
-        router.push(`/dashboard/${view}`)
+        const path = view === 'dashboard' ? '/dashboard' : `/dashboard/${view}`
+        router.push(path)
       }} currentView={currentView} />
       <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none">
         <div className="py-6">

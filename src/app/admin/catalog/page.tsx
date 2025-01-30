@@ -5,33 +5,35 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import Pagination from '@/app/components/Pagination';
 import Toast from '@/app/components/Toast';
-import type { Database, TableRow } from '@/app/components/types/database.types';
-import DeleteConfirmationModal from '@/app/components/DeleteConfirmationModal';
+import type { ActiveProduct, Database, InactiveProduct, TableRow } from '@/app/components/types/database.types';
+import { DeleteConfirmationModal } from '@/app/components/DeleteConfirmationModal';
 import { ProductTable } from '@/app/components/ProductTable/ProductTable';
 import { ProductForm, ProductFormData } from '@/app/components/ProductForm/ProductForm';
 import { Dialog } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
 import { MediaService } from '@/services/MediaService';
 import { MediaUploadManager } from '@/services/MediaUploadManager';
+import { ProductTabs } from '@/app/components/ProductTable/ProductTabs';
+import { notificationService } from '@/services/notificationService';
+import { ProductSort } from '@/app/components/ProductTable/ProductSort';
+import { SortConfig, SortField, SortOrder } from '@/app/components/ProductTable/types'
+import { InvoiceStatus } from '@/app/components/types/invoice'
+import { CatalogGuide } from '@/app/components/admin/CatalogGuide';
 
 type Product = TableRow<'products'> & {
   category?: TableRow<'categories'>
   media?: ProductMedia[]
+  status: 'active' | 'inactive'
+  availability: boolean
+  requests?: TableRow<'requests'>[]
 }
 type ProductMedia = TableRow<'product_media'>
 type Category = TableRow<'categories'>
 
-type SortField = keyof Omit<Product, 'category' | 'media' | 'created_at' | 'updated_at'> | 'category_id';
-type SortOrder = 'asc' | 'desc';
 type ToastMessage = { type: 'success' | 'error'; message: string } | null;
 
-interface SortConfig {
-  field: SortField;
-  order: SortOrder;
-  priority: number;
-}
-
 export default function CatalogManagement() {
+  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,27 +55,74 @@ export default function CatalogManagement() {
   const productsPerPage = 10;
   const supabase = createClientComponentClient<Database>();
 
-  useEffect(() => {
-    fetchProducts();
-  }, [sortConfigs]);
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      let query = supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(*),
+          media:product_media(*),
+          requests:requests(*),
+          status
+        `)
+        .eq('status', activeTab);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('admin_products')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'products' 
-        }, 
-        () => fetchProducts()
-      )
-      .subscribe();
+      // Always apply created_at sort first
+      query = query.order('created_at', { ascending: false });
 
+      // Then apply user-defined sorts
+      sortConfigs.forEach((config) => {
+        const foreignKey = config.field === 'category_id' ? 'categories.name' : String(config.field);
+        query = query.order(foreignKey, {
+          ascending: config.order === 'asc',
+          nullsFirst: false,
+        });
+      });
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      const subscription = supabase
+        .channel('product_changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'products',
+          filter: `status=eq.${activeTab}`
+        }, handleRealtimeUpdate)
+        .subscribe();
+
+      setProducts(data || []);
+      return () => { subscription.unsubscribe(); };
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setError('Failed to fetch products');
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, sortConfigs]);
+
+  // Handle real-time updates
+  const handleRealtimeUpdate = (payload: any) => {
+    if (payload.eventType === 'UPDATE') {
+      setProducts(prev => prev.map(product => 
+        product.id === payload.new.id ? { ...product, ...payload.new } : product
+      ));
+    }
+  };
+
+  // Effect to refetch when tab changes
+  useEffect(() => {
+    const cleanup = fetchProducts();
     return () => {
-      supabase.removeChannel(channel);
+      cleanup.then(unsubscribe => unsubscribe?.());
     };
-  }, []);
+  }, [activeTab, fetchProducts]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -93,68 +142,6 @@ export default function CatalogManagement() {
     fetchCategories();
   }, []);
 
-  async function fetchProducts() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error('Not authenticated');
-
-      console.log('🔍 Starting product fetch...');
-      let query = supabase
-        .from('products')
-        .select(`
-          *,
-          media:product_media(*),
-          category:categories!products_category_id_fkey(*)
-        `);
-
-      // Apply filters
-      if (categoryFilter !== 'all') {
-        query = query.eq('category_id', categoryFilter);
-      }
-
-      if (availabilityFilter !== 'all') {
-        query = query.eq('availability', availabilityFilter === 'active');
-      }
-
-      if (searchQuery) {
-        query = query.ilike('name', `%${searchQuery}%`);
-      }
-
-      // Apply sorting
-      sortConfigs.sort((a, b) => a.priority - b.priority);
-
-      // Add default sort by created_at if no other sorts are specified
-      if (sortConfigs.length === 0) {
-        query = query.order('created_at', { ascending: false });
-      } else {
-        // Apply existing sort configs
-        sortConfigs.forEach(config => {
-          if (config.field === 'category_id') {
-            query = query.order('categories!products_category_id_fkey(name)', { ascending: config.order === 'asc' });
-          } else {
-            query = query.order(config.field, { ascending: config.order === 'asc' });
-          }
-        });
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      
-      console.log('📦 Products fetched:', {
-        count: data?.length,
-        withMedia: data?.filter(p => p.media?.length > 0).length,
-        mediaUrls: data?.map(p => p.media?.map((m: ProductMedia) => m.url))
-      });
-      
-      setProducts(data || []);
-    } catch (e) {
-      console.error('❌ Error fetching products:', e);
-      showToast('error', e instanceof Error ? e.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
@@ -171,8 +158,8 @@ export default function CatalogManagement() {
     setCurrentPage(1);
   };
 
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
+  const handleEdit = (product: Product | undefined) => {
+    setEditingProduct(product || null);
     setIsModalOpen(true);
   };
 
@@ -325,31 +312,22 @@ export default function CatalogManagement() {
 
   const toggleAllProducts = () => {
     setSelectedProducts(prev => 
-      prev.length === currentProducts.length 
-        ? [] 
-        : currentProducts.map(p => p.id)
+      prev.length === products.length ? [] : products.map(p => p.id)
     );
   };
 
-  // Filter products
+  // Filter products based on search, category, and availability
   const filteredProducts = products.filter(product => {
-    const matchesSearch = 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.category?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = 
-      categoryFilter === 'all' || product.category_id === categoryFilter;
-    
-    const matchesAvailability = 
-      availabilityFilter === 'all' || 
-      (availabilityFilter === 'active' ? product.availability : !product.availability);
-
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || product.category?.id === categoryFilter;
+    const matchesAvailability = availabilityFilter === 'all' || product.status === availabilityFilter;
     return matchesSearch && matchesCategory && matchesAvailability;
   });
 
-  // Pagination calculations
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const indexOfLastProduct = currentPage * productsPerPage;
+
+  // Pagination calculations
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
 
@@ -357,29 +335,59 @@ export default function CatalogManagement() {
     await fetchProducts();
   }, [fetchProducts]);
 
+  const handleStatusChange = async (productId: string, newStatus: 'active' | 'inactive') => {
+    try {
+      setLoading(true);
+      
+      // Find the product
+      const product = products.find(p => p.id === productId);
+      if (!product) throw new Error('Product not found');
+
+      // Update product status
+      const { error } = await supabase
+        .from('products')
+        .update({ status: newStatus })
+        .eq('id', productId);
+
+      if (error) throw error;
+      
+      // Create status history entry
+      const { error: historyError } = await supabase
+        .from('status_history')
+        .insert({
+          product_id: productId,
+          old_status: product.status,
+          new_status: newStatus,
+          created_at: new Date().toISOString()
+        });
+
+      if (historyError) throw historyError;
+
+      // Create notification
+      await notificationService.createStatusChangeNotification(
+        productId,
+        product.status,
+        newStatus,
+        product.name
+      );
+      
+      showToast('success', 'Product status updated successfully');
+      await fetchProducts();
+    } catch (error) {
+      console.error('Error updating product status:', error);
+      showToast('error', 'Failed to update product status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add this debug log
+  useEffect(() => {
+    console.log('CatalogManagement selectedProducts:', selectedProducts);
+  }, [selectedProducts]);
+
   return (
     <div className="p-6">
-      {/* Header with Add Button */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Catalog Management</h1>
-        <div className="flex gap-2">
-          {selectedProducts.length > 0 && (
-            <button
-              onClick={handleBulkDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-            >
-              Delete Selected ({selectedProducts.length})
-            </button>
-          )}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Add Product
-          </button>
-        </div>
-      </div>
-
       {/* Filters and Search */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <input
@@ -412,33 +420,57 @@ export default function CatalogManagement() {
         </select>
       </div>
 
-      {/* Product Table */}
-      {loading ? (
-        <LoadingSpinner />
-      ) : error ? (
-        <div className="text-red-500">{error}</div>
-      ) : (
-        <>
-          <ProductTable 
-            products={currentProducts}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onSort={handleSort}
-            sortConfigs={sortConfigs}
-            selectedProducts={selectedProducts}
-            onSelectProduct={toggleProductSelection}
-            onSelectAll={toggleAllProducts}
-          />
-          
-          <div className="mt-4">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
-        </>
-      )}
+      <ProductSort 
+        onSort={handleSort}
+        sortConfigs={sortConfigs}
+      />
+      
+      <div className="mt-4">
+        <ProductTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          activeProducts={products
+            .filter(p => p.status === 'active')
+            .map(p => ({
+              ...p,
+              requests: (p.requests || []).map(r => ({
+                ...r,
+                user: { id: r.customer_id, email: '', name: '', role: 'customer', status: 'active', last_login: null, created_at: '', updated_at: '' },
+                invoice_status: 'unpaid',
+                status: r.status
+              }))
+            } as ActiveProduct))}
+          inactiveProducts={products
+            .filter(p => p.status === 'inactive')
+            .map(p => ({
+              ...p,
+              requests: (p.requests || []).map(r => ({
+                ...r,
+                user: { id: r.customer_id, email: '', name: '', role: 'customer', status: 'active', last_login: null, created_at: '', updated_at: '' },
+                invoice_status: 'pending' as InvoiceStatus,
+                resolution_status: r.resolution_status || 'pending',
+                notification_sent: false
+              }))
+            } as InactiveProduct))}
+          onStatusChange={handleStatusChange}
+          activeCount={products.filter(p => p.status === 'active').length}
+          inactiveCount={products.filter(p => p.status === 'inactive').length}
+          loading={loading}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          selectedProducts={selectedProducts}
+          onSelectProduct={toggleProductSelection}
+          onSelectAll={toggleAllProducts}
+        />
+      </div>
+
+      <div className="mt-4">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
 
       {/* Product Form Modal */}
       <Dialog
@@ -462,6 +494,9 @@ export default function CatalogManagement() {
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
         itemName={productToDelete?.name || ''}
+        requestId=""
+        productId={productToDelete?.id || ''}
+        onDeleted={async () => { await fetchProducts(); }}
       />
 
       {toast && (
@@ -471,6 +506,8 @@ export default function CatalogManagement() {
           onClose={() => setToast(null)}
         />
       )}
+
+      <CatalogGuide />
     </div>
   );
 } 

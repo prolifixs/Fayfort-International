@@ -12,7 +12,9 @@ import { toast } from 'react-hot-toast';
 import ProtectedRoute from '@/app/components/ProtectedRoute';
 import type { TableRow } from '@/app/components/types/database.types';
 
-type Product = TableRow<'products'>
+type Product = TableRow<'products'> & {
+  media?: ProductMedia[]
+}
 type ProductMedia = TableRow<'product_media'>
 
 export default function ProductDetailPage() {
@@ -71,6 +73,7 @@ export default function ProductDetailPage() {
         .insert([{
           product_id: params.id,
           customer_id: session.user.id,
+          user_id: session.user.id,
           quantity: formData.quantity,
           budget: parseFloat(product?.price_range || '0'),
           notes: formData.notes,

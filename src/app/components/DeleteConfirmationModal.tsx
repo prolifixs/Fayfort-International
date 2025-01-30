@@ -1,42 +1,176 @@
-import React from 'react';
+'use client'
+
+import { Dialog, DialogContent } from '@/app/components/ui/dialog'
+import { Button } from '@/app/components/ui/button'
+import { useState } from 'react'
+import { RequestProcessingService } from '@/app/components/lib/requests/requestProcessor'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+
+import { UserRequestDeletionService } from '@/services/userRequestDeletion'
 
 interface DeleteConfirmationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  itemName: string;
+  isOpen: boolean
+  onClose: () => void
+  onConfirm?: () => Promise<void>
+  itemName?: string
+  requestId?: string
+  productId?: string
+  onDeleted?: (requestId: string, canDeleteProduct: boolean) => Promise<void>
+  title?: string
+  message?: string
 }
 
-export default function DeleteConfirmationModal({
+interface RequestData {
+  status: string;
+  resolution_status: string;
+  product: {
+    status: 'active' | 'inactive';
+  };
+}
+
+export function DeleteConfirmationModal({
   isOpen,
   onClose,
   onConfirm,
-  itemName
-}: DeleteConfirmationModalProps) {
-  if (!isOpen) return null;
+  itemName,
+  requestId,
+  productId,
+  onDeleted,
+  title,
+  message,
+  isProductDeletion
+}: DeleteConfirmationModalProps & { isProductDeletion?: boolean }) {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const requestProcessor = new RequestProcessingService()
+  const deletionService = new UserRequestDeletionService()
+  const supabase = createClientComponentClient()
+
+  const handleDelete = async () => {
+    if (!confirmed) return
+    setIsDeleting(true)
+    setError(null)
+    
+    try {
+      if (isProductDeletion && onConfirm) {
+        await onConfirm()
+        onClose()
+        return
+      }
+      
+      if (requestId) {
+        console.log('Checking deletion safety for request:', requestId)
+        const isSafe = await requestProcessor.verifyDeletionSafety(requestId)
+        console.log('Deletion safety check result:', isSafe)
+        
+        if (!isSafe) {
+          const { data } = await supabase
+            .from('requests')
+            .select(`
+              status,
+              resolution_status,
+              product:products!inner(status)
+            `)
+            .eq('id', requestId)
+            .single<RequestData>()
+
+          if (data?.product.status === 'active') {
+            setError('Cannot delete: Only pending requests can be deleted for active products')
+          } else {
+            setError('Cannot delete: Request must be resolved first')
+          }
+          return
+        }
+
+        await deletionService.deleteRequest(requestId)
+        
+        if (onDeleted) {
+          await onDeleted(requestId, false)
+        }
+        onClose()
+      }
+    } catch (error) {
+      console.error('Delete error:', error)
+      setError(error instanceof Error ? error.message : 'Failed to delete')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-        <h3 className="text-lg font-semibold mb-4">Confirm Deletion</h3>
-        <p className="text-gray-600 mb-6">
-          Are you sure you want to delete "{itemName}"? This action cannot be undone.
-        </p>
-        <div className="flex justify-end gap-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Delete
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center">
+        <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-y-auto">
+          <div className="p-6 flex flex-col items-center text-center">
+            <h3 className="text-lg font-semibold text-red-600 mb-4">
+              {title || `Confirm ${itemName} Deletion`}
+            </h3>
+            
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded w-full">
+                {error}
+              </div>
+            )}
+
+            <p className="text-gray-600 mb-4">
+              {message || (isProductDeletion ? 
+                "Warning: This will permanently delete the product and all associated data. This action cannot be undone." :
+                "Are you sure you want to delete this request? This action cannot be undone."
+              )}
+            </p>
+            
+            {!isProductDeletion && (
+              <div className="mt-4 flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="confirm"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="confirm" className="text-sm text-gray-600">
+                  I confirm this request has been properly processed and notified
+                </label>
+              </div>
+            )}
+
+            {isProductDeletion && (
+              <div className="mb-6">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    onChange={(e) => setConfirmed(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium text-red-600">
+                    I understand this action is irreversible and will delete all product data
+                  </span>
+                </label>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={!confirmed || isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : `Delete ${isProductDeletion ? 'Product' : 'Request'}`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
       </div>
-    </div>
-  );
+    </Dialog>
+  )
 } 

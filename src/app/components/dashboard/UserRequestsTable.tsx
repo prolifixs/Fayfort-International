@@ -5,19 +5,25 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { clientWebsocketService, ConnectionStatus } from '@/services/clientWebsocketService'
 import { useToast } from '@/hooks/useToast'
-import { Loader2, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react'
-import { StatusBadge } from '../ui/StatusBadge'
+import { Loader2, ChevronDown, ChevronUp, ChevronLeft, PlusCircle } from 'lucide-react'
+import { StatusBadge, AllStatus, ResolutionStatus } from '../ui/StatusBadge'
 import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
+import { useRouter } from 'next/navigation'
+import { DeleteConfirmationModal } from '@/app/components/DeleteConfirmationModal'
+import { RequestProcessingService } from '@/app/components/lib/requests/requestProcessor'
 
 interface UserRequest {
   id: string
   product_id: string
   customer_id: string
-  status: string
+  status: AllStatus
+  resolution_status?: ResolutionStatus
   created_at: string
   product: {
     id: string
     name: string
+    status: string
   }
   customer: {
     id: string
@@ -27,9 +33,12 @@ interface UserRequest {
   budget: number
   invoice?: {
     id: string
-    status: string
+    status: AllStatus
     amount: number
   }
+  notification_sent: boolean
+  notification_type: string
+  last_notification_date: string
 }
 
 interface SortConfig {
@@ -38,6 +47,46 @@ interface SortConfig {
 }
 
 const ITEMS_PER_PAGE = 10
+
+interface EmptyStateCardProps {
+  onCreateRequest: () => void;
+}
+
+function EmptyStateCard({ onCreateRequest }: EmptyStateCardProps) {
+  return (
+    <div className="text-center py-12 px-4 border-2 border-dashed border-gray-200 rounded-lg bg-white">
+      <div className="space-y-6 max-w-sm mx-auto">
+        <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+          <PlusCircle className="h-8 w-8 text-blue-500" />
+        </div>
+        
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold text-gray-900">Create Your First Request</h3>
+          <p className="text-sm text-gray-500">
+            Start by creating a request for the products you're interested in. Our team will help you find the best deals.
+          </p>
+        </div>
+
+        <Button 
+          onClick={onCreateRequest}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Create New Request
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface RequestStatus {
+  status: string;
+  notification_sent: boolean;
+  resolution_status: string;
+  product: {
+    status: 'active' | 'inactive';
+  };
+}
 
 export function UserRequestsTable() {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
@@ -49,6 +98,10 @@ export function UserRequestsTable() {
   const [sort, setSort] = useState<SortConfig>({ field: 'created_at', direction: 'desc' })
   const supabase = createClientComponentClient()
   const { toast } = useToast()
+  const router = useRouter()
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [requestToDelete, setRequestToDelete] = useState<string | null>(null)
+  const requestProcessor = new RequestProcessingService()
 
   async function fetchUserRequests() {
     try {
@@ -68,16 +121,24 @@ export function UserRequestsTable() {
           product_id,
           customer_id,
           status,
+          resolution_status,
           created_at,
           quantity,
           budget,
+          notification_sent,
+          notification_type,
+          last_notification_date,
           product:products!inner (
             id,
-            name
+            name,
+            status
           ),
           customer:users!requests_customer_id_fkey (
             id,
             email
+          ),
+          resolution_statuses (
+            status
           )
         `)
         .eq('customer_id', user.id)
@@ -88,7 +149,8 @@ export function UserRequestsTable() {
       if (error) throw error
       setRequests(data?.map(item => ({
         ...item,
-        product: Array.isArray(item.product) ? item.product[0] : item.product || { id: item.product_id, name: 'No product name' },
+        resolution_status: item.resolution_status || item.resolution_statuses?.[0]?.status || 'pending',
+        product: Array.isArray(item.product) ? item.product[0] : item.product,
         customer: Array.isArray(item.customer) ? item.customer[0] : item.customer
       })) || [])
     } catch (err) {
@@ -162,6 +224,83 @@ export function UserRequestsTable() {
     }
   }, [sort])
 
+  const handleDeleteClick = async (requestId: string) => {
+    try {
+      console.log('Starting delete check for request:', requestId);
+      const { data, error } = await supabase
+        .from('requests')
+        .select(`
+          status,
+          resolution_status,
+          product:products!inner (
+            status
+          )
+        `)
+        .eq('id', requestId)
+        .single<RequestStatus>();
+
+      console.log('Request data:', data);
+
+      if (error || !data) {
+        toast({
+          title: "Error checking request",
+          description: "Failed to verify request status",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const canDelete = await requestProcessor.verifyDeletionSafety(requestId);
+      if (!canDelete) {
+        if (data.product.status === 'active') {
+          toast({
+            title: "Cannot delete request",
+            description: "Only pending requests can be deleted for active products",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Cannot delete request",
+            description: "Request must be resolved before deletion",
+            variant: "destructive",
+          })
+        }
+        return;
+      }
+
+      setRequestToDelete(requestId);
+      setShowDeleteModal(true);
+    } catch (error) {
+      console.error('Delete check error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process delete request",
+        variant: "destructive",
+      })
+    }
+  };
+
+  const handleDeleteSuccess = async (requestId: string) => {
+    toast({
+      title: "Request deleted",
+      description: "Your request has been successfully deleted",
+      variant: "success",
+    })
+    fetchUserRequests() // Refresh the table
+  }
+
+  const handleCreateRequest = () => {
+    router.push('/catalog')
+  }
+
+  const canDeleteRequest = (request: UserRequest) => {
+    if (request.product.status === 'active') {
+      return request.status === 'pending';
+    } else {
+      return request.resolution_status === 'resolved';
+    }
+  };
+
   if (error) {
     return (
       <div className="text-center py-4 text-red-600">
@@ -229,32 +368,70 @@ export function UserRequestsTable() {
                         sort.direction === 'asc' ? <ChevronUp className="inline h-4 w-4" /> : <ChevronDown className="inline h-4 w-4" />
                       )}
                     </th>
+                    <th className="px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedRequests.map((request) => (
-                    <tr 
+                    <motion.tr
                       key={request.id}
-                      onClick={() => setSelectedRequestId(request.id)}
-                      className="cursor-pointer hover:bg-gray-50 transition-colors"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="hover:bg-gray-50"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.product?.name || 'No product name'}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {request.product.name}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={request.status} />
+                        <div className="flex items-center space-x-2">
+                          <StatusBadge status={request.status} type="request" />
+                          {request.product.status === 'inactive' && request.resolution_status && (
+                            <StatusBadge 
+                              status={request.resolution_status} 
+                              type="resolution" 
+                              className="ml-2"
+                            />
+                          )}
+                          {request.notification_sent && (
+                            <Badge variant="outline" className="ml-2">
+                              {request.notification_type?.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(request.created_at).toLocaleDateString()}
+                        {request.created_at && new Date(request.created_at).toLocaleDateString()}
                       </td>
-                    </tr>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedRequestId(request.id)}
+                          >
+                            View Details
+                          </Button>
+                          {canDeleteRequest(request) && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteClick(request.id)}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </motion.tr>
                   ))}
                 </tbody>
               </table>
 
               {requests.length === 0 && !loading && (
-                <div className="text-center py-4 text-gray-500">
-                  No requests found
+                <div className="px-6 py-4">
+                  <EmptyStateCard onCreateRequest={handleCreateRequest} />
                 </div>
               )}
 
@@ -306,6 +483,18 @@ export function UserRequestsTable() {
           </motion.div>
         )}
       </AnimatePresence>
+      {showDeleteModal && requestToDelete && (
+        <DeleteConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false)
+            setRequestToDelete(null)
+          }}
+          requestId={requestToDelete}
+          onDeleted={handleDeleteSuccess}
+          itemName="Request"
+        />
+      )}
     </div>
   )
 }

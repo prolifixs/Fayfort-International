@@ -23,6 +23,11 @@ const navigation: NavSection[] = [
         label: 'Catalog',
         path: '/catalog',
         roles: ['admin', 'customer', 'supplier']
+      },
+      {
+        label: 'About',
+        path: '/about',
+        roles: ['admin', 'customer', 'supplier']
       }
     ]
   },

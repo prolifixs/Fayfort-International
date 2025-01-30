@@ -26,11 +26,32 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Log to error tracking service
+    this.logError(error, errorInfo);
+    
+    // Attempt recovery
+    this.attemptRecovery(error);
+  }
+
+  private logError(error: Error, errorInfo: React.ErrorInfo) {
     console.error('🚨 Error caught by boundary:', {
-      error,
-      errorInfo,
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
       componentStack: errorInfo.componentStack
     });
+  }
+
+  private attemptRecovery(error: Error) {
+    // Clear local storage if it's a storage error
+    if (error.message.includes('localStorage')) {
+      localStorage.clear();
+    }
+
+    // Reset app state if it's a state-related error
+    if (error.message.includes('state')) {
+      this.setState({ hasError: false });
+    }
   }
 
   render() {

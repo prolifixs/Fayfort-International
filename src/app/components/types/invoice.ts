@@ -48,7 +48,7 @@ export interface InvoiceData {
   invoices: InvoiceItem[];
 }
 
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled'
+export type InvoiceStatus = 'paid' | 'unpaid' | 'pending'
 
 export interface NotificationEmailData {
   to: string

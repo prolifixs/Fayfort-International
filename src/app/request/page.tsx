@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import type { Database } from '@/app/components/types/database.types';
 import { RequestWithRelations, SortField } from '../components/types/request.types';
 import RequestFilters from '@/app/components/RequestFilters';
+import { RequestGuide } from '@/app/components/request/RequestGuide';
 
 type Request = RequestWithRelations;
 
@@ -180,6 +181,7 @@ export default function RequestPage() {
           />
         )}
       </div>
+      <RequestGuide />
     </ProtectedRoute>
   );
 }

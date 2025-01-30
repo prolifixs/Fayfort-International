@@ -7,16 +7,10 @@ import Toast from '@/app/components/Toast'
 import { AddressList } from './AddressList'
 import { z } from 'zod'
 import LoadingSpinner from '@/app/components/LoadingSpinner'
+import type { Database } from '@/app/components/types/database.types'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-interface Address {
-  id: string
-  street_address: string
-  city: string
-  state: string
-  postal_code: string
-  country: string
-  is_default: boolean
-}
+type Address = Database['public']['Tables']['shipping_address']['Row']
 
 const addressSchema = z.object({
   street_address: z.string().min(1, 'Street address is required'),
@@ -46,16 +40,23 @@ export function AddressForm() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [isSettingDefault, setIsSettingDefault] = useState<string | null>(null)
 
+  const supabase = createClientComponentClient<Database>()
+
   // Fetch addresses on component mount
   useEffect(() => {
-    fetchAddresses()
-  }, [])
+    if (user?.id) {
+      fetchAddresses()
+    }
+  }, [user])
 
   const fetchAddresses = async () => {
     try {
-      const response = await fetch('/api/user/addresses')
-      if (!response.ok) throw new Error('Failed to fetch addresses')
-      const data = await response.json()
+      const { data, error } = await supabase
+        .from('shipping_address')
+        .select('*')
+        .eq('user_id', user?.id)
+
+      if (error) throw error
       setAddresses(data)
     } catch (error) {
       toast({ 
@@ -77,26 +78,24 @@ export function AddressForm() {
       
       // Optimistic update
       const tempId = `temp-${Date.now()}`
-      const newAddress = { ...validatedData, id: tempId }
+      const newAddress: Address = {
+        ...validatedData,
+        id: tempId,
+        user_id: user?.id || '',
+        created_at: new Date().toISOString()
+      }
       setAddresses(prev => [...prev, newAddress])
       
-      const response = await fetch('/api/user/addresses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validatedData)
-      })
+      const { data, error } = await supabase
+        .from('shipping_address')
+        .insert([{ ...validatedData, user_id: user?.id }])
+        .select()
+
+      if (error) throw error
       
-      if (!response.ok) {
-        // Revert optimistic update
-        setAddresses(prev => prev.filter(addr => addr.id !== tempId))
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to add address')
-      }
-      
-      const savedAddress = await response.json()
       // Replace temp address with saved one
       setAddresses(prev => prev.map(addr => 
-        addr.id === tempId ? savedAddress : addr
+        addr.id === tempId ? data[0] : addr
       ))
       
       setIsAddingNew(false)

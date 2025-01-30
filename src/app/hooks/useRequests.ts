@@ -27,6 +27,19 @@ export function useRequests(options: UseRequestsOptions = {}) {
   }), [options.status, options.startDate, options.endDate])
 
   const fetchRequests = async () => {
+    const cacheKey = `requests-${JSON.stringify(memoizedOptions)}`;
+    const cachedData = sessionStorage.getItem(cacheKey);
+
+    if (cachedData) {
+      const { data, timestamp } = JSON.parse(cachedData);
+      const isCacheValid = Date.now() - timestamp < 5 * 60 * 1000; // 5 minutes
+      
+      if (isCacheValid) {
+        setRequests(data);
+        return;
+      }
+    }
+
     try {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
@@ -81,16 +94,20 @@ export function useRequests(options: UseRequestsOptions = {}) {
 
       if (fetchError) throw fetchError
 
-      const transformedData = data?.map(item => {
-        if (!isSupabaseRequestResponse(item)) {
-          throw new Error('Invalid response format from Supabase');
+      const transformedData = data?.map(item => ({
+        ...item,
+        product: {
+          id: item.product_id,
+          name: item.product[0].name,
+          category: item.product[0].category,
+          image_url: item.product[0].image_url
+        },
+        customer: {
+          id: item.customer_id,
+          name: item.customer[0].name,
+          email: item.customer[0].email
         }
-        return {
-          ...item,
-          product: item.product[0],
-          customer: item.customer[0]
-        };
-      }) || [];
+      })) || [];
 
       setRequests(transformedData as RequestWithRelations[]);
 
@@ -100,13 +117,28 @@ export function useRequests(options: UseRequestsOptions = {}) {
       const completed = data.filter(r => r.status === 'fulfilled').length
       setStats({ total, pending, completed })
 
+      // Cache the results
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        data: transformedData,
+        timestamp: Date.now()
+      }));
+
     } catch (err) {
-      console.error('Error fetching requests:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch requests')
+      handleError(err);
     } finally {
       setLoading(false)
     }
   }
+
+  const handleError = (err: unknown) => {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch requests';
+    setError(errorMessage);
+    
+    // Retry on network errors
+    if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+      setTimeout(fetchRequests, 3000);
+    }
+  };
 
   const createRequest = async (formData: RequestFormData) => {
     try {

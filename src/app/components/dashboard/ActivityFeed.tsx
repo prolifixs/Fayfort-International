@@ -5,6 +5,14 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { StatusBadge } from './StatusBadge'
 import { useToast } from '@/hooks/useToast'
 import { useRouter } from 'next/navigation'
+import { 
+  FileText, 
+  CreditCard, 
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Clock
+} from 'lucide-react'
 
 interface Activity {
   id: string
@@ -16,6 +24,26 @@ interface Activity {
     status?: string
     invoice_id?: string
     payment_status?: string
+  }
+}
+
+function getActivityIcon(type: Activity['type'], status?: string) {
+  switch (type) {
+    case 'invoice_generated':
+      return <FileText className="h-4 w-4 text-purple-500" />
+    case 'payment_received':
+      return <CreditCard className="h-4 w-4 text-green-500" />
+    case 'status_change':
+      switch (status) {
+        case 'approved':
+          return <CheckCircle className="h-4 w-4 text-green-500" />
+        case 'rejected':
+          return <AlertCircle className="h-4 w-4 text-red-500" />
+        default:
+          return <Clock className="h-4 w-4 text-blue-500" />
+      }
+    default:
+      return <RefreshCw className="h-4 w-4 text-gray-500" />
   }
 }
 
@@ -40,14 +68,6 @@ export function ActivityFeed() {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setActivities(prev => [payload.new as Activity, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            setActivities(prev =>
-              prev.map(activity =>
-                activity.id === payload.new.id
-                  ? { ...activity, ...payload.new }
-                  : activity
-              )
-            )
           }
         }
       )
@@ -61,7 +81,6 @@ export function ActivityFeed() {
   async function fetchActivities() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      console.log('ActivityFeed - Current user:', user)
       if (!user) return
 
       const { data, error } = await supabase
@@ -70,13 +89,13 @@ export function ActivityFeed() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10)
-
-      console.log('ActivityFeed - Raw fetch result:', { data, error })
       
       if (error) throw error
       setActivities(data || [])
     } catch (error) {
-      console.error('ActivityFeed - Error fetching activities:', error)
+      console.error('Error fetching activities:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -115,7 +134,19 @@ export function ActivityFeed() {
   }
 
   if (loading) {
-    return <div className="animate-pulse">Loading activities...</div>
+    return (
+      <div className="space-y-4 animate-pulse">
+        {[...Array(3)].map((_, idx) => (
+          <div key={idx} className="flex space-x-3">
+            <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -124,32 +155,33 @@ export function ActivityFeed() {
         {activities.map((activity, activityIdx) => (
           <li key={activity.id}>
             <div className="relative pb-8">
-              {activityIdx !== activities.length - 1 ? (
+              {activityIdx !== activities.length - 1 && (
                 <span
                   className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200"
                   aria-hidden="true"
                 />
-              ) : null}
+              )}
               <div 
-                className="relative flex space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2"
+                className={`relative flex space-x-3 bg-white rounded-lg p-4 shadow-sm border border-gray-100 transition-all
+                  ${activity.type === 'invoice_generated' ? 'cursor-pointer hover:shadow-md hover:border-blue-200' : ''}`}
                 onClick={() => handleActivityClick(activity)}
               >
-                <div>
-                  <span className="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center ring-8 ring-white">
-                    {/* Icon based on activity type */}
-                  </span>
+                <div className="h-8 w-8 rounded-full bg-gray-50 flex items-center justify-center ring-8 ring-white">
+                  {getActivityIcon(activity.type, activity.metadata.status)}
                 </div>
-                <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                <div className="flex min-w-0 flex-1 justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm font-medium text-gray-900">
                       {activity.content}
                     </p>
                     <div className="mt-2 space-x-2">
                       {renderBadges(activity)}
                     </div>
                   </div>
-                  <div className="whitespace-nowrap text-right text-sm text-gray-500">
-                    {new Date(activity.created_at).toLocaleString()}
+                  <div className="ml-4 flex-shrink-0">
+                    <time className="text-xs text-gray-500">
+                      {new Date(activity.created_at).toLocaleString()}
+                    </time>
                   </div>
                 </div>
               </div>
