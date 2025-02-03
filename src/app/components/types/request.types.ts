@@ -10,6 +10,9 @@ export interface RequestWithRelations {
   created_at: string;
   quantity: number;
   budget: number;
+  invoice?: {
+    amount: number;
+  };
   product: {
     id: string;
     name: string;
@@ -32,7 +35,7 @@ export function isValidRequest(request: any): request is RequestWithRelations {
 }
 
 // Request status type
-export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled';
+export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled' | 'shipped';
 
 export type RequestStatusWithAll = RequestStatus | 'all';
 

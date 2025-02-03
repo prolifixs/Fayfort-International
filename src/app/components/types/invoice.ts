@@ -81,6 +81,16 @@ export interface InvoiceWithCustomer {
   }
 }
 
+export interface ShippingAddress {
+  street_address: string
+  city: string
+  state: string
+  postal_code: string
+  country: string
+  is_default: boolean
+  user_id?: string
+}
+
 export interface Invoice {
   id: string
   request_id: string
@@ -116,14 +126,4 @@ export interface EmailQueueItem {
     path?: string;
     content?: Buffer;
   }>;
-}
-
-export interface ShippingAddress {
-  user_id: string
-  street_address: string
-  city: string
-  state: string
-  postal_code: string
-  country: string
-  is_default: boolean
 } 

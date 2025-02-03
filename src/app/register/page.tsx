@@ -10,6 +10,7 @@ import { checkPasswordStrength } from '@/app/utils/passwordStrength'
 import { validateEmail, validatePassword } from '../utils/auth'
 import { z } from 'zod'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { emailService } from '@/services/emailService'
 
 interface RegisterFormData {
   name: string
@@ -118,8 +119,23 @@ export default function RegisterPage() {
 
       localStorage.setItem('verificationEmail', validatedData.email);
       router.push('/check-email');
-      toast.success('Registration successful! Please check your email.');
-  
+
+      // Send welcome email
+      await emailService.sendWelcomeEmail(
+        validatedData.email,
+        validatedData.name
+      )
+
+      // If email verification is required, send verification email
+      if (!authData.session) {
+        await emailService.sendVerificationEmail(
+          validatedData.email,
+          validatedData.name,
+          authData.user?.confirmation_sent_at
+        )
+      }
+
+      toast.success('Registration successful! Please check your email to verify your account.')
     } catch (err) {
       console.error('Registration error:', err);
       setError(err instanceof Error ? err.message : 'Registration failed');

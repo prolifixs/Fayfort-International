@@ -19,17 +19,18 @@ export async function GET(
           unit_price,
           total_price,
           product:products (
+            id,
             name,
             description,
-            category
+            category_id
           )
         ),
         request:requests (
           id,
           customer:users (
             id,
-            name,
-            email
+            email,
+            name
           )
         )
       `)

@@ -7,32 +7,72 @@ import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function InvoicePreviewPage({ params }: { params: { id: string } }) {
+  console.log('🟢 PreviewPage: Component mounted with params:', params)
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let mounted = true
+    
     const fetchInvoice = async () => {
       try {
-        const response = await fetch(`/api/invoices/${params.id}/preview`)
+        console.log('🟢 PreviewPage: Fetching invoice:', params.id)
+        const response = await fetch(`/api/invoices/${params.id}/preview`, {
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        })
+        
         if (!response.ok) throw new Error('Failed to fetch invoice')
         const data = await response.json()
-        console.log('📥 Preview: Fetched invoice data:', data)
-        setInvoice(data)
-      } catch (error) {
-        console.error('Failed to fetch invoice:', error)
+        
+        if (mounted) {
+          console.log('✅ PreviewPage: Setting invoice data:', data)
+          setInvoice(data)
+        }
+      } catch (err) {
+        console.error('🔴 PreviewPage: Error:', err)
+        if (mounted) setError('Failed to load invoice')
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
+
     fetchInvoice()
+    return () => { mounted = false }
   }, [params.id])
 
-  if (loading || !invoice) {
-    return <div>Loading...</div>
+  // Add more detailed loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4"></div>
+          <p>Loading preview...</p>
+        </div>
+      </div>
+    )
   }
 
-  return (
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center text-red-600">
+          <p>{error}</p>
+          <button 
+            onClick={() => router.back()}
+            className="mt-4 text-blue-600 hover:underline"
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return invoice ? (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
@@ -47,5 +87,5 @@ export default function InvoicePreviewPage({ params }: { params: { id: string } 
         <PDFPreview invoice={invoice} />
       </div>
     </div>
-  )
+  ) : null
 } 

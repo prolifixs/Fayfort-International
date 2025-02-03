@@ -12,6 +12,9 @@ import { Badge } from '../ui/badge'
 import { useRouter } from 'next/navigation'
 import { DeleteConfirmationModal } from '@/app/components/DeleteConfirmationModal'
 import { RequestProcessingService } from '@/app/components/lib/requests/requestProcessor'
+import { PaymentDialog } from '../payment/PaymentDialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/app/components/ui/dialog'
+import { toast } from 'react-hot-toast'
 
 interface UserRequest {
   id: string
@@ -35,10 +38,15 @@ interface UserRequest {
     id: string
     status: AllStatus
     amount: number
-  }
+    created_at: string
+    due_date?: string
+  } | null
   notification_sent: boolean
   notification_type: string
   last_notification_date: string
+  tracking_number?: string
+  carrier?: string
+  shipping_date?: string
 }
 
 interface SortConfig {
@@ -88,6 +96,15 @@ interface RequestStatus {
   };
 }
 
+// Add or update the invoice type definition
+type Invoice = {
+  id: string
+  status: AllStatus
+  amount: number
+  created_at: string
+  due_date?: string
+}
+
 export function UserRequestsTable() {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
   const [requests, setRequests] = useState<UserRequest[]>([])
@@ -102,6 +119,7 @@ export function UserRequestsTable() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null)
   const requestProcessor = new RequestProcessingService()
+  const [showShippedDeleteModal, setShowShippedDeleteModal] = useState(false)
 
   async function fetchUserRequests() {
     try {
@@ -115,41 +133,38 @@ export function UserRequestsTable() {
       }
 
       const { data, error } = await supabase
-        .from('requests')
-        .select(`
+      .from('requests')
+      .select(`
+        id,
+        product_id,
+        customer_id,
+        status,
+        resolution_status,
+        created_at,
+        quantity,
+        budget,
+        notification_sent,
+        notification_type,
+        last_notification_date,
+        product:products!requests_product_id_fkey (
           id,
-          product_id,
-          customer_id,
-          status,
-          resolution_status,
-          created_at,
-          quantity,
-          budget,
-          notification_sent,
-          notification_type,
-          last_notification_date,
-          product:products!inner (
-            id,
-            name,
-            status
-          ),
-          customer:users!requests_customer_id_fkey (
-            id,
-            email
-          ),
-          resolution_statuses (
-            status
-          )
-        `)
-        .eq('customer_id', user.id)
-        .order('created_at', { ascending: false })
+          name,
+          status
+        ),
+        customer:users!requests_customer_id_fkey (
+          id,
+          email
+        )
+      `)
+      .eq('customer_id', user.id)
+      .order(sort.field, { ascending: sort.direction === 'asc' })
 
       console.log('Raw data:', data)
 
       if (error) throw error
       setRequests(data?.map(item => ({
         ...item,
-        resolution_status: item.resolution_status || item.resolution_statuses?.[0]?.status || 'pending',
+        resolution_status: item.resolution_status || 'pending',
         product: Array.isArray(item.product) ? item.product[0] : item.product,
         customer: Array.isArray(item.customer) ? item.customer[0] : item.customer
       })) || [])
@@ -224,6 +239,33 @@ export function UserRequestsTable() {
     }
   }, [sort])
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('request_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'requests'
+        },
+        (payload) => {
+          setRequests(current =>
+            current.map(request =>
+              request.id === payload.new.id
+                ? { ...request, ...payload.new }
+                : request
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const handleDeleteClick = async (requestId: string) => {
     try {
       console.log('Starting delete check for request:', requestId);
@@ -231,52 +273,75 @@ export function UserRequestsTable() {
         .from('requests')
         .select(`
           status,
+          customer_id,
+          product_id,
           resolution_status,
           product:products!inner (
             status
-          )
+          ),
+          tracking_number,
+          carrier,
+          shipping_date,
+          invoice:invoices(*)
         `)
         .eq('id', requestId)
-        .single<RequestStatus>();
-
-      console.log('Request data:', data);
+        .single();
 
       if (error || !data) {
+        console.error('Delete check error:', error);
         toast({
           title: "Error checking request",
           description: "Failed to verify request status",
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
 
+      // Handle shipped requests
+      if (data.status === 'shipped') {
+        setRequestToDelete(requestId);
+        setShowShippedDeleteModal(true);
+        console.log('Shipped request deletion initiated:', {
+          requestId,
+          timestamp: new Date().toISOString(),
+          shippingInfo: {
+            tracking: data.tracking_number,
+            carrier: data.carrier,
+            date: data.shipping_date
+          }
+        });
+        return;
+      }
+
+      // Handle pending requests (existing logic)
       const canDelete = await requestProcessor.verifyDeletionSafety(requestId);
       if (!canDelete) {
-        if (data.product.status === 'active') {
+        if (data.product[0].status === 'active') {
           toast({
             title: "Cannot delete request",
             description: "Only pending requests can be deleted for active products",
             variant: "destructive",
-          })
+          });
         } else {
           toast({
             title: "Cannot delete request",
             description: "Request must be resolved before deletion",
             variant: "destructive",
-          })
+          });
         }
         return;
       }
 
       setRequestToDelete(requestId);
       setShowDeleteModal(true);
+
     } catch (error) {
       console.error('Delete check error:', error);
       toast({
         title: "Error",
         description: "Failed to process delete request",
         variant: "destructive",
-      })
+      });
     }
   };
 
@@ -294,6 +359,12 @@ export function UserRequestsTable() {
   }
 
   const canDeleteRequest = (request: UserRequest) => {
+    // Allow deletion for shipped requests regardless of product status
+    if (request.status === 'shipped') {
+      return true;
+    }
+
+    // Keep existing logic for other cases
     if (request.product.status === 'active') {
       return request.status === 'pending';
     } else {
@@ -495,43 +566,248 @@ export function UserRequestsTable() {
           itemName="Request"
         />
       )}
+      {showShippedDeleteModal && requestToDelete && (
+        <ShippedDeleteConfirmationModal
+          isOpen={showShippedDeleteModal}
+          onClose={() => {
+            setShowShippedDeleteModal(false);
+            setRequestToDelete(null);
+          }}
+          onConfirm={async (requestId) => {
+            try {
+              console.log('Starting shipped request archival process:', requestId);
+
+              // 1. Get request and invoice data
+              const { data: requestData } = await supabase
+                .from('requests')
+                .select(`
+                  *,
+                  invoice:invoices(*)
+                `)
+                .eq('id', requestId)
+                .single();
+
+              if (!requestData) {
+                throw new Error('Request not found');
+              }
+
+              // 2. Create archive record with invoice data
+              const { error: archiveError } = await supabase
+                .from('archived_requests')
+                .insert({
+                  original_request_id: requestId,
+                  status: requestData.status,
+                  shipping_info: {
+                    tracking_number: requestData.tracking_number,
+                    carrier: requestData.carrier,
+                    shipping_date: requestData.shipping_date
+                  },
+                  invoice_info: requestData.invoice,
+                  archived_at: new Date().toISOString()
+                });
+
+              if (archiveError) throw archiveError;
+
+              // 3. Delete status history first
+              await supabase
+                .from('status_history')
+                .delete()
+                .eq('request_id', requestId);
+
+              // 4. Delete invoice
+              await supabase
+                .from('invoices')
+                .delete()
+                .eq('request_id', requestId);
+
+              // 5. Then delete request
+              const { error: deleteError } = await supabase
+                .from('requests')
+                .delete()
+                .eq('id', requestId);
+
+              if (deleteError) throw deleteError;
+
+              handleDeleteSuccess(requestId);
+              console.log('Shipped request archived and deleted successfully:', requestId);
+            } catch (error) {
+              console.error('Error in shipped request deletion:', error);
+              toast({
+                title: "Error",
+                description: "Failed to process shipped request deletion",
+                variant: "destructive",
+              });
+
+            } finally {
+              setShowShippedDeleteModal(false);
+              setRequestToDelete(null);
+            }
+          }}
+          requestId={requestToDelete}
+        />
+      )}
     </div>
   )
 }
 
-function RequestDetails({ requestId }: { requestId: string }) {
+export function RequestDetails({ requestId }: { requestId: string }) {
   const [details, setDetails] = useState<UserRequest | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
 
   useEffect(() => {
-    async function fetchDetails() {
-      try {
-        setLoading(true)
-        const { data, error } = await supabase
-          .from('requests')
-          .select(`
-            *,
-            product:products(name),
-            invoice:invoices(id, status, amount)
-          `)
-          .eq('id', requestId)
-          .single()
-
-        if (error) throw error
-        setDetails(data)
-      } catch (error) {
-        console.error('Error fetching request details:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchDetails()
+    
+    const channel = supabase
+      .channel(`request-${requestId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requests',
+          filter: `id=eq.${requestId}`
+        },
+        () => fetchDetails()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'invoices',
+          filter: `request_id=eq.${requestId}`
+        },
+        () => fetchDetails()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [requestId])
 
+  async function fetchDetails() {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('requests')
+        .select(`
+          *,
+          product:products!requests_product_id_fkey (
+            id,
+            name,
+            status
+          ),
+          invoice:invoices (
+            id, 
+            status, 
+            amount,
+            created_at,
+            due_date
+          )
+        `)
+        .eq('id', requestId)
+        .single()
+
+      if (error) throw error
+      
+      // Transform the data to match the expected structure
+      const transformedData = {
+        ...data,
+        product: Array.isArray(data.product) ? data.product[0] : data.product,
+        invoice: Array.isArray(data.invoice) ? data.invoice[0] : data.invoice
+      }
+      
+      setDetails(transformedData)
+    } catch (error) {
+      console.error('Error fetching request details:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const renderInvoiceSection = () => {
+    if (!details?.invoice) return null;
+
+    return (
+      <div className="border-t pt-4">
+        <label className="text-sm font-medium text-gray-500">Invoice</label>
+        <div className="mt-2 p-4 bg-gray-50 rounded-md space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">#{details.invoice.id}</span>
+            <StatusBadge status={details.invoice.status} />
+          </div>
+          <div className="text-sm">
+            <div className="font-medium">Amount: ${details.invoice.amount}</div>
+            {details.invoice.created_at && (
+              <div className="text-gray-500">
+                Created: {new Date(details.invoice.created_at).toLocaleDateString()}
+              </div>
+            )}
+            {details.invoice.due_date && (
+              <div className="text-gray-500">
+                Due: {new Date(details.invoice.due_date).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={() => setIsPaymentOpen(true)}
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Make Payment
+            </button>
+          </div>
+        </div>
+
+        <PaymentDialog 
+          isOpen={isPaymentOpen}
+          onClose={() => setIsPaymentOpen(false)}
+          amount={details.invoice.amount}
+          invoiceId={details.invoice.id}
+        />
+      </div>
+    )
+  }
+
+  const renderShippingSection = () => {
+    if (!details?.tracking_number || details.status !== 'shipped') return null;
+
+    return (
+      <div className="border-t pt-4">
+        <label className="text-sm font-medium text-gray-500">Shipping Information</label>
+        <div className="mt-2 p-4 bg-gray-50 rounded-md space-y-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Tracking Number</label>
+              <div className="mt-1 text-sm">{details.tracking_number}</div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Carrier</label>
+              <div className="mt-1 text-sm">{details.carrier}</div>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Shipped Date</label>
+            <div className="mt-1 text-sm">
+              {details.shipping_date && new Date(details.shipping_date).toLocaleDateString()}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
-    return <div className="animate-pulse">Loading...</div>
+    return (
+      <div className="p-4 space-y-4">
+        <div className="animate-pulse bg-gray-200 h-6 w-1/4 rounded"></div>
+        <div className="animate-pulse bg-gray-200 h-20 w-full rounded"></div>
+        <div className="animate-pulse bg-gray-200 h-20 w-full rounded"></div>
+      </div>
+    )
   }
 
   if (!details) {
@@ -571,20 +847,126 @@ function RequestDetails({ requestId }: { requestId: string }) {
         </div>
       </div>
 
-      {details.invoice && (
-        <div className="border-t pt-4">
-          <label className="text-sm font-medium text-gray-500">Invoice</label>
-          <div className="mt-2 p-3 bg-gray-50 rounded-md">
-            <div className="flex justify-between items-center">
-              <span className="text-sm">#{details.invoice.id}</span>
-              <StatusBadge status={details.invoice.status} />
-            </div>
-            <div className="mt-2 text-sm font-medium">
-              Amount: ${details.invoice.amount}
-            </div>
-          </div>
-        </div>
-      )}
+      {renderInvoiceSection()}
+      {renderShippingSection()}
     </div>
   )
+}
+
+function ShippedDeleteConfirmationModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  requestId 
+}: { 
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (requestId: string) => Promise<void>;
+  requestId: string;
+}) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const supabase = createClientComponentClient();
+
+  const handleConfirm = async () => {
+    try {
+      setIsDeleting(true);
+      console.log('Starting shipped request archival process:', requestId);
+
+      // 1. Get request and invoice data
+      const { data: requestData } = await supabase
+        .from('requests')
+        .select(`
+          *,
+          invoice:invoices(*)
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (!requestData) {
+        throw new Error('Request not found');
+      }
+
+      // 2. Create archive record with invoice data
+      const { error: archiveError } = await supabase
+        .from('archived_requests')
+        .insert({
+          original_request_id: requestId,
+          status: requestData.status,
+          shipping_info: {
+            tracking_number: requestData.tracking_number,
+            carrier: requestData.carrier,
+            shipping_date: requestData.shipping_date
+          },
+          invoice_info: requestData.invoice,
+          archived_at: new Date().toISOString()
+        });
+
+      if (archiveError) throw archiveError;
+
+      // 3. Delete status history first
+      await supabase
+        .from('status_history')
+        .delete()
+        .eq('request_id', requestId);
+
+      // 4. Delete invoice
+      await supabase
+        .from('invoices')
+        .delete()
+        .eq('request_id', requestId);
+
+      // 5. Then delete request
+      const { error: deleteError } = await supabase
+        .from('requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (deleteError) throw deleteError;
+
+      await onConfirm(requestId);
+      console.log('Shipped request archived and deleted successfully:', requestId);
+    } catch (error) {
+      console.error('Error in shipped request deletion:', error);
+      toast.error('Failed to process shipped request deletion', {
+        duration: 4000,
+        position: 'top-right',
+        icon: '❌'
+      });
+    } finally {
+      setIsDeleting(false);
+      onClose();
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Shipped Request</DialogTitle>
+          <DialogDescription>
+            This request has been shipped and completed. It will be archived for record-keeping before deletion. Would you like to proceed?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={handleConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Proceed with Deletion'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 } 

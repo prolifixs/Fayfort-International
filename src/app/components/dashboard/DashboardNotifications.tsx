@@ -48,10 +48,16 @@ export function DashboardNotifications() {
               payload
             })
             if (payload.eventType === 'INSERT') {
-              console.log('DashboardNotifications - New request created:', payload.new)
               toast({
                 title: 'New Request Created',
                 description: `Request #${payload.new.id} has been created`,
+                variant: 'default'
+              })
+              fetchNotifications()
+            } else if (payload.eventType === 'UPDATE' && payload.old.status !== payload.new.status) {
+              toast({
+                title: 'Status Updated',
+                description: `Request #${payload.new.id} status changed to ${payload.new.status}`,
                 variant: 'default'
               })
               fetchNotifications()

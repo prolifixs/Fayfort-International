@@ -1,5 +1,4 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { activityService } from './activityService';
 import { pdfService } from './pdfService';
 import { emailService } from './emailService';
 
@@ -125,20 +124,6 @@ export async function generateInvoice(requestId: string) {
     if (notificationError) {
       console.error('Failed to create notification:', notificationError);
     }
-
-    // Use activityService to log to activity_log table
-    await activityService.logActivity({
-      type: 'invoice_generated',
-      content: `Invoice generated for request ${requestId}`,
-      description: `Invoice generated for request ${requestId} with amount ${request.budget}`,
-      reference_id: invoice.id,
-      user_email: user.email,
-      metadata: {
-        request_id: requestId,
-        invoice_id: invoice.id,
-        amount: request.budget
-      }
-    });
 
     console.log('✅ Invoice created successfully');
     return true;

@@ -1,7 +1,6 @@
 'use client'
 
 import { DashboardNotifications } from '../components/dashboard/DashboardNotifications'
-import { ActivityFeed } from '../components/activities/ActivityFeed'
 import { RequestFlow } from '../components/dashboard/RequestFlow'
 import { UserRequestsTable } from '../components/dashboard/UserRequestsTable'
 import RequestFormModal from '../components/RequestFormModal'
@@ -30,9 +29,12 @@ export default function DashboardPage() {
     try {
       const { error } = await supabase
         .from('requests')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          resolution_status: 'resolved'
+        })
         .eq('id', requestId)
-
+  
       if (error) throw error
       
       toast({
@@ -52,21 +54,24 @@ export default function DashboardPage() {
 
   const handleNewRequest = async (formData: any) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('requests')
         .insert([{
           ...formData,
           status: 'pending'
         }])
-
-      if (error) throw error
-
+        .select()
+        .single();
+  
+      if (error || !data) throw new Error('Failed to create request');
+  
       setIsRequestFormOpen(false)
       toast({
         title: 'Request created',
         description: 'Your request has been submitted successfully',
         variant: 'success'
       })
+      return { id: data.id as string };
     } catch (error) {
       console.error('Error creating request:', error)
       toast({
@@ -74,6 +79,7 @@ export default function DashboardPage() {
         description: 'Please try again later',
         variant: 'destructive'
       })
+      throw new Error('Failed to create request');
     }
   }
 
@@ -106,9 +112,9 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <div className="bg-white shadow rounded-lg p-6">
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h2>
+                  <h2 className="text-lg font-medium text-gray-900 mb-4">Exchange Rates</h2>
                   <div className="max-h-[300px] overflow-y-auto pr-2">
-                    <ActivityFeed />
+                    {/* Activity content will be replaced */}
                   </div>
                 </div>
               </div>

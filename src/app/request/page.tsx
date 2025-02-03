@@ -7,7 +7,7 @@ import ProtectedRoute from '@/app/components/ProtectedRoute';
 import RequestsTable from '@/app/components/RequestsTable';
 import { toast } from 'react-hot-toast';
 import type { Database } from '@/app/components/types/database.types';
-import { RequestWithRelations, SortField } from '../components/types/request.types';
+import { RequestStatus, RequestWithRelations, SortField } from '../components/types/request.types';
 import RequestFilters from '@/app/components/RequestFilters';
 import { RequestGuide } from '@/app/components/request/RequestGuide';
 
@@ -101,7 +101,7 @@ export default function RequestPage() {
     }
   };
 
-  const handleStatusChange = async (requestId: string, newStatus: 'approved' | 'rejected') => {
+  const handleStatusChange = async (requestId: string, newStatus: RequestStatus) => {
     try {
       const { error } = await supabase
         .from('requests')
@@ -112,6 +112,17 @@ export default function RequestPage() {
         .eq('id', requestId);
 
       if (error) throw error;
+
+      // Create notification for status change
+      await supabase
+        .from('notifications')
+        .insert({
+          type: 'status_change',
+          content: `Request ${requestId} has been ${newStatus}`,
+          reference_id: requestId,
+          read_status: false,
+          created_at: new Date().toISOString()
+        });
 
       // Add to activity log
       await supabase

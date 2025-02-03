@@ -6,6 +6,8 @@ import { generateInvoicePDF } from '@/app/components/lib/pdf/generateInvoicePDF'
 import { Loader2, Eye, Download, Mail } from 'lucide-react'
 import Toast from '@/app/components/Toast'
 import { useRouter } from 'next/navigation'
+import { PreviewModal } from './PreviewModal'
+import { PaymentDialog } from '../payment/PaymentDialog'
 
 interface InvoiceItem {
   id: string
@@ -53,7 +55,9 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -75,10 +79,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   }, [invoiceId])
 
   const handlePreviewClick = () => {
-    if (invoice) {
-      console.log('Navigating to preview page:', invoice.id)
-      router.push(`/dashboard/invoices/${invoiceId}/preview`)
-    }
+    setIsPreviewOpen(true)
   }
 
   const handleDownload = async () => {
@@ -153,16 +154,10 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
               Preview PDF
             </button>
             <button
-              onClick={handleDownload}
-              disabled={isGenerating}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setIsPaymentOpen(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
             >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              {isGenerating ? 'Generating...' : 'Download PDF'}
+              Make Payment
             </button>
           </div>
         </div>
@@ -248,6 +243,20 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           </table>
         </div>
       </div>
+
+      <PreviewModal
+        invoice={invoice}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        onDownload={handleDownload}
+      />
+
+      <PaymentDialog 
+        isOpen={isPaymentOpen}
+        onClose={() => setIsPaymentOpen(false)}
+        amount={invoice.amount}
+        invoiceId={invoice.id}
+      />
     </>
   )
 } 

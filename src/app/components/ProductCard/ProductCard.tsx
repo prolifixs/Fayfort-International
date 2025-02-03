@@ -95,7 +95,7 @@ export function ProductCard({ product, onClick }: ProductCardProps) {
           <h3 className="font-medium text-gray-900">{product.name}</h3>
           <p className="text-sm text-gray-500 mt-1">{product.category?.name}</p>
           <p className="text-sm font-medium text-gray-900 mt-2">
-            {product.price_range}
+            ${product.price_range}
           </p>
         </div>
       </div>

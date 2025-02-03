@@ -17,14 +17,16 @@ export default function RequestsPage() {
 
   const handleNewRequest = async (formData: any) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('requests')
         .insert([{
           ...formData,
           status: 'pending'
         }])
+        .select()
+        .single();
 
-      if (error) throw error
+      if (error || !data) throw new Error('Failed to create request');
 
       setIsRequestFormOpen(false)
       toast({
@@ -32,6 +34,7 @@ export default function RequestsPage() {
         description: 'Your request has been submitted successfully',
         variant: 'success'
       })
+      return { id: data.id as string };
     } catch (error) {
       console.error('Error creating request:', error)
       toast({
@@ -39,6 +42,7 @@ export default function RequestsPage() {
         description: 'Please try again later',
         variant: 'destructive'
       })
+      throw new Error('Failed to create request');
     }
   }
 

@@ -5,6 +5,7 @@ import ClientLayout from './components/ClientLayout'
 import { ErrorBoundary } from '@/app/components/error/ErrorBoundary'
 import { Suspense } from 'react'
 import { InvoiceSkeleton } from '@/app/components/loading/InvoiceSkeleton'
+import { Toaster } from "@/app/components/ui/toaster"
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({
             </ClientLayout>
           </Suspense>
         </ErrorBoundary>
+        <Toaster />
       </body>
     </html>
   )

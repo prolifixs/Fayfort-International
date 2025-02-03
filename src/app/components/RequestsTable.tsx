@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RequestWithRelations, SortField } from '@/app/components/types/request.types';
-import StatusUpdateDropdown from './StatusUpdateDropdown';
+import { RequestStatus, RequestWithRelations, SortField } from '@/app/components/types/request.types';
+import { StatusUpdateDropdown } from './StatusUpdateDropdown';
 import StatusHistoryModal from './StatusHistoryModal';
 import { websocketService } from '@/services/websocketService';
 import type { ConnectionStatus } from '@/services/websocketService';
+import { NotificationService } from '@/services/notificationService';
+import { toast } from 'react-hot-toast';
+import { supabase } from './lib/supabase';
 
 interface RequestsTableProps {
   requests: RequestWithRelations[];
-  onStatusUpdate?: (requestId: string, newStatus: 'approved' | 'rejected') => Promise<void>;
+  onStatusUpdate?: (requestId: string, newStatus: RequestStatus) => Promise<void>;
   onSort: (field: SortField) => void;
   sortField: SortField;
   sortOrder: 'asc' | 'desc';
@@ -31,8 +34,8 @@ export default function RequestsTable({
   onPageChange
 }: RequestsTableProps) {
   const [requests, setRequests] = useState<RequestWithRelations[]>(initialRequests);
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     setRequests(initialRequests)
@@ -56,16 +59,43 @@ export default function RequestsTable({
     }
   }, []);
 
-  const handleStatusUpdate = (requestId: string, newStatus: 'approved' | 'rejected') => {
-    onStatusUpdate?.(requestId, newStatus);
-    if (selectedRequestId === requestId) {
-      setSelectedRequestId(null);
+  const handleStatusUpdateRequest = async (requestId: string, newStatus: RequestStatus) => {
+    console.group('🔄 RequestsTable - Status Update Flow');
+    
+    try {
+      setIsUpdating(true);
+      const currentRequest = requests.find(r => r.id === requestId);
+      
+      // Update status
+      await onStatusUpdate?.(requestId, newStatus);
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Create notification for status change
+      const notificationService = new NotificationService();
+      await notificationService.sendStatusUpdateNotification(requestId, newStatus, {
+        previousStatus: currentRequest?.status,
+        productName: currentRequest?.product?.name
+      });
+
+      console.log('✅ Status Update Complete');
+    } catch (error) {
+      console.error('❌ Status Update Failed:', error);
+      toast.error('Failed to update status');
+      throw error;
+    } finally {
+      setIsUpdating(false);
+      console.groupEnd();
     }
   };
 
   // Calculate pagination
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRequests = requests.slice(startIndex, startIndex + itemsPerPage);
+
+  const statusFilters: RequestStatus[] = ['pending', 'approved', 'rejected', 'fulfilled', 'shipped'];
 
   return (
     <div className="space-y-4">
@@ -113,9 +143,9 @@ export default function RequestsTable({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <StatusUpdateDropdown
-                    requestId={request.id}
-                    currentStatus={request.status}
-                    onStatusUpdate={(newStatus) => handleStatusUpdate(request.id, newStatus)}
+                    request={request}
+                    onStatusChange={(newStatus) => handleStatusUpdateRequest(request.id, newStatus)}
+                    disabled={isUpdating}
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -123,7 +153,6 @@ export default function RequestsTable({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <button
-                    onClick={() => setSelectedRequestId(request.id)}
                     className="text-blue-600 hover:text-blue-900"
                   >
                     View
@@ -182,13 +211,6 @@ export default function RequestsTable({
           </div>
         </div>
       </div>
-
-      {selectedRequestId && (
-        <StatusHistoryModal
-          requestId={selectedRequestId}
-          onClose={() => setSelectedRequestId(null)}
-        />
-      )}
     </div>
   );
 }

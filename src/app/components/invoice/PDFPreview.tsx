@@ -10,96 +10,60 @@ interface PDFPreviewProps {
   onDownload?: () => void
 }
 
-export function PDFPreview({ invoice, onDownload }: PDFPreviewProps) {
-  const [isLoading, setIsLoading] = useState(false)
+export function PDFPreview({ invoice }: PDFPreviewProps) {
   const [isGenerating, setIsGenerating] = useState(!invoice.pdf_url)
+  const [error, setError] = useState<string | null>(null)
+  const [pdfUrl, setPdfUrl] = useState(invoice.pdf_url)
 
-  const handleDownload = async () => {
+  useEffect(() => {
+    console.log('PDFPreview mounted:', { invoice, isGenerating, pdf_url: invoice.pdf_url })
+    if (!invoice.pdf_url) {
+      generatePDF()
+    } else {
+      setPdfUrl(invoice.pdf_url)
+    }
+  }, [invoice])
+
+  const generatePDF = async () => {
     try {
-      setIsLoading(true)
-      if (onDownload) {
-        await onDownload()
-      } else if (invoice.pdf_url) {
-        const response = await fetch(invoice.pdf_url)
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice-${invoice.id}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-      }
+      setIsGenerating(true)
+      const response = await fetch(`/api/invoices/${invoice.id}/preview`)
+      if (!response.ok) throw new Error('Failed to fetch invoice data')
+      const data = await response.json()
+      
+      const pdfUrl = await pdfService.generateAndStore(data)
+      invoice.pdf_url = pdfUrl
+      setPdfUrl(pdfUrl)
     } catch (error) {
-      console.error('Failed to download PDF:', error)
+      console.error('PDF generation failed:', error)
+      setError('Failed to generate PDF')
     } finally {
-      setIsLoading(false)
+      setIsGenerating(false)
     }
   }
 
-  // Generate PDF if not already generated
-  const generatePDF = async () => {
-    try {
-      console.log('🔄 PDFPreview: Starting PDF generation');
-      setIsGenerating(true);
-      const pdfUrl = await pdfService.generateAndStore(invoice);
-      console.log('✅ PDFPreview: PDF generated with URL:', pdfUrl);
-      invoice.pdf_url = pdfUrl;
-    } catch (error) {
-      console.error('❌ PDFPreview: Failed to generate PDF:', error);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!invoice.pdf_url && !isGenerating) {
-      console.log('🚀 PDFPreview: No PDF URL found, initiating generation');
-      generatePDF();
-    }
-  }, [invoice, isGenerating]);
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="w-full h-[600px] border rounded-lg overflow-hidden bg-gray-50">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 border rounded-lg overflow-hidden bg-gray-50">
         {isGenerating ? (
           <div className="flex flex-col items-center justify-center h-full space-y-4">
             <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
             <p className="text-gray-500">Generating PDF preview...</p>
           </div>
-        ) : invoice.pdf_url ? (
-          <iframe
-            src={`${invoice.pdf_url}#view=FitH`}
+        ) : pdfUrl ? (
+          <object
+            data={pdfUrl}
+            type="application/pdf"
             className="w-full h-full"
-            title={`Invoice #${invoice.id} Preview`}
-          />
+          >
+            <p>Unable to display PDF. <a href={pdfUrl} target="_blank" rel="noopener noreferrer">Download</a> instead.</p>
+          </object>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
-            Failed to load PDF preview
+            {error || 'Failed to load PDF preview'}
           </div>
         )}
       </div>
-
-      <button
-        onClick={handleDownload}
-        disabled={isLoading || !invoice.pdf_url}
-        className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-      >
-        {isLoading ? (
-          <span className="flex items-center">
-            <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-            Downloading...
-          </span>
-        ) : (
-          <span className="flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download PDF
-          </span>
-        )}
-      </button>
     </div>
   )
-} 
+}

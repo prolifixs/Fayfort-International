@@ -7,24 +7,46 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { toast } from 'react-hot-toast';
 import { createNotification } from './lib/notifications';
 import { generateInvoice } from '@/services/invoiceService';
+import { LoadingBar } from '@/app/components/LoadingBar/LoadingBar';
+import { Invoice } from '@/app/components/types/invoice';
+import { emailService } from '@/services/emailService';
+import { RequestWithRelations } from '@/app/components/types/request.types';
+
+
+import { Button } from '@/app/components/ui/button';
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
+import { ShippingService } from '@/services/shippingService';
+
+
+
+
+
 
 interface StatusUpdateDropdownProps {
-  requestId: string;
-  currentStatus: RequestStatus;
-  onStatusUpdate: (newStatus: 'approved' | 'rejected') => void;
+  request: RequestWithRelations;
+  onStatusChange: (newStatus: RequestStatus) => Promise<void>;
+  disabled?: boolean;
 }
 
-export default function StatusUpdateDropdown({
-  requestId,
-  currentStatus,
-  onStatusUpdate
-}: StatusUpdateDropdownProps) {
+export function StatusUpdateDropdown({ request, onStatusChange, disabled = false }: StatusUpdateDropdownProps) {
   const supabase = createClientComponentClient();
   const [isOpen, setIsOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showShippingInfo, setShowShippingInfo] = useState(false);
   const [selectedNewStatus, setSelectedNewStatus] = useState<RequestStatus | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [shippingInfo, setShippingInfo] = useState({
+    carrier: '',
+    trackingNumber: '',
+    shippingDate: null as Date | null
+  });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -37,133 +59,207 @@ export default function StatusUpdateDropdown({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const statusOptions: RequestStatus[] = [
-    'pending',
-    'approved',
-    'rejected',
-    'fulfilled'
-  ];
+  const statusOptions: RequestStatus[] = ['pending', 'approved', 'rejected', 'fulfilled', 'shipped'];
 
   const handleStatusChange = async (newStatus: RequestStatus) => {
-    console.group('🔄 Status Change Flow Initiated');
-    console.log('Current Status:', currentStatus);
-    console.log('New Status:', newStatus);
-
-    if (newStatus === currentStatus) {
-      console.log('❌ Status unchanged - exiting flow');
+    console.group('🔄 StatusUpdateDropdown - Update Flow');
+    console.log('Status Change Started:', {
+      requestId: request.id,
+      currentStatus: request.status,
+      newStatus
+    });
+    
+    if (isUpdating) {
+      console.warn('⚠️ Update already in progress');
       console.groupEnd();
-      setIsOpen(false);
       return;
     }
+    setIsUpdating(true);
 
-    if (newStatus === 'approved' || newStatus === 'rejected') {
-      console.log('📝 Showing notes modal for approval/rejection');
+    try {
+      if (newStatus === request.status) {
+        console.log('ℹ️ No status change needed - same status');
+        setIsOpen(false);
+        console.groupEnd();
+        return;
+      }
+
+      if (newStatus === 'shipped') {
+        console.log('📦 Showing shipping modal');
+        setSelectedNewStatus(newStatus);
+        setShowShippingInfo(true);
+        setIsOpen(false);
+        console.groupEnd();
+        return;
+      }
+
+      console.log('📝 Showing notes modal');
       setSelectedNewStatus(newStatus);
       setShowNotes(true);
       setIsOpen(false);
+      console.groupEnd();
+    } finally {
+      setIsUpdating(false);
     }
-    console.groupEnd();
   };
 
   const handleSubmit = async () => {
-    if (!selectedNewStatus) return;
+    console.group('📤 StatusUpdateDropdown - Submit Flow');
+    setIsProcessing(true);
+    setProgress(0);
+    setError(null);
     
-    console.group('📤 Status Update Submission');
     try {
-      console.log('1️⃣ Updating request status in database');
-      const { error: requestError } = await supabase
-        .from('requests')
-        .update({ 
-          status: selectedNewStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', requestId);
-
-      if (requestError) throw requestError;
-      console.log('✅ Request status updated successfully');
-
-      console.log('2️⃣ Creating status history entry');
-      const { error: historyError } = await supabase
-        .from('status_history')
-        .insert({
-          request_id: requestId,
-          status: selectedNewStatus,
-          notes: notes.trim() || null,
-          created_at: new Date().toISOString()
+      if (selectedNewStatus === 'shipped') {
+        setLoadingMessage('Processing shipping update...');
+        
+        const shippingService = new ShippingService();
+        await shippingService.processShippingUpdate(request.id, {
+          carrier: shippingInfo.carrier,
+          trackingNumber: shippingInfo.trackingNumber,
+          shippingDate: shippingInfo.shippingDate?.toISOString() || null
         });
-
-      if (historyError) throw historyError;
-      console.log('✅ Status history created successfully');
-
-      // Add notification creation
-      console.log('3️⃣ Creating notification');
-      try {
-        await createNotification({
-          type: 'status_change',
-          content: `Request status updated to ${selectedNewStatus}`,
-          reference_id: requestId,
-          reference_type: 'request'
+        
+        setProgress(100);
+        setLoadingMessage('Complete!');
+        
+        // Reset form
+        setShowNotes(false);
+        setShowShippingInfo(false);
+        setShippingInfo({
+          carrier: '',
+          trackingNumber: '',
+          shippingDate: null
         });
-        console.log('✅ Notification created successfully');
-      } catch (notifError) {
-        console.error('❌ Notification creation failed:', notifError);
+      } else {
+        await onStatusChange(selectedNewStatus as RequestStatus);
       }
 
-      // Add invoice generation for approved status
       if (selectedNewStatus === 'approved') {
-        console.log('4️⃣ Initiating invoice generation');
-        try {
-          // This should be implemented in your invoice service
-          await generateInvoice(requestId);
-          console.log('✅ Invoice generated successfully');
-        } catch (invoiceError) {
-          console.error('❌ Invoice generation failed:', invoiceError);
-        }
+        console.log('📋 Generating invoice');
+        setLoadingMessage('Generating invoice...');
+        setProgress(40);
+        await generateInvoice(request.id);
+        setProgress(60);
+        
+        console.log('📧 Sending email notification');
+        setLoadingMessage('Sending notification email...');
+        setProgress(80);
+        const requestToInvoiceStatus = {
+          pending: 'draft',
+          approved: 'sent',
+          fulfilled: 'paid',
+          rejected: 'cancelled',
+          shipped: 'paid'
+        } as const;
+        const invoice: Invoice = {
+          id: request.id,
+          request_id: request.id,
+          user_id: request.customer.id,
+          status: requestToInvoiceStatus[selectedNewStatus] || 'draft',
+          amount: request.invoice?.amount || 0,
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          invoice_items: []
+        };
+        await emailService.sendStatusChangeEmail(
+          invoice,
+          requestToInvoiceStatus[request.status] || 'draft',
+          requestToInvoiceStatus[selectedNewStatus] || 'draft'
+        );
       }
-
-      onStatusUpdate(selectedNewStatus as 'approved' | 'rejected');
-      setShowNotes(false);
-      setNotes('');
-      setSelectedNewStatus(null);
-      toast.success(`Status updated to ${selectedNewStatus}`);
-      console.log('✅ Status update flow completed successfully');
+      
     } catch (error) {
-      console.error('❌ Error in status update flow:', error);
-      toast.error('Failed to update status');
+      console.error('❌ Submit failed:', error);
+      setError('Failed to process shipping update');
+      throw error;
+    } finally {
+      setIsProcessing(false);
+      console.groupEnd();
     }
-    console.groupEnd();
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`px-3 py-1 rounded-full text-sm font-medium ${
-          statusService.getStatusColor(currentStatus)
-        }`}
+    <div className="relative">
+      <select
+        value={request.status}
+        onChange={(e) => handleStatusChange(e.target.value as RequestStatus)}
+        disabled={disabled}
+        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
       >
-        {currentStatus.toString().replace('_', ' ')}
-      </button>
+        {statusOptions.map(status => (
+          <option key={status} value={status}>
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </option>
+        ))}
+      </select>
 
-      {isOpen && (
-        <div className="absolute z-10 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
-          <div className="py-1" role="menu">
-            {statusOptions.map((status) => (
-              <button
-                key={status}
-                onClick={() => handleStatusChange(status)}
-                className={`block w-full text-left px-4 py-2 text-sm ${
-                  status === currentStatus
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-                role="menuitem"
-              >
-                {status.replace('_', ' ')}
-              </button>
-            ))}
-          </div>
-        </div>
+      {showShippingInfo && (
+        <Dialog open={showShippingInfo} onOpenChange={() => setShowShippingInfo(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Enter Shipping Information</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 p-4">
+              <div className="space-y-2">
+                <label htmlFor="tracking" className="block text-sm font-medium text-gray-700">
+                  Tracking Number
+                </label>
+                <input
+                  id="tracking"
+                  type="text"
+                  value={shippingInfo.trackingNumber}
+                  onChange={(e) => setShippingInfo(prev => ({...prev, trackingNumber: e.target.value}))}
+                  required
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="carrier" className="block text-sm font-medium text-gray-700">
+                  Carrier
+                </label>
+                <input
+                  id="carrier"
+                  type="text"
+                  value={shippingInfo.carrier}
+                  onChange={(e) => setShippingInfo(prev => ({...prev, carrier: e.target.value}))}
+                  required
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="date" className="block text-sm font-medium text-gray-700">
+                  Ship Date
+                </label>
+                <input
+                  id="date"
+                  type="datetime-local"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  value={shippingInfo.shippingDate ? shippingInfo.shippingDate.toISOString().slice(0, 16) : ''}
+                  onChange={(e) => setShippingInfo(prev => ({
+                    ...prev, 
+                    shippingDate: e.target.value ? new Date(e.target.value) : null
+                  }))}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowShippingInfo(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!shippingInfo.trackingNumber || !shippingInfo.carrier}
+                >
+                  Update Status
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {showNotes && (
@@ -193,6 +289,18 @@ export default function StatusUpdateDropdown({
                 Update Status
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <LoadingBar 
+              progress={progress}
+              message={loadingMessage}
+              error={error || undefined}
+            />
           </div>
         </div>
       )}

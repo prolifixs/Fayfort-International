@@ -100,27 +100,12 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['supplier_responses']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['supplier_responses']['Insert']>
       }
-      activity_log: {
-        Row: {
-          id: string
-          user_id: string
-          user_email: string
-          type: string
-          content: string
-          reference_id: string | null
-          metadata: Json | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: Omit<Database['public']['Tables']['activity_log']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['activity_log']['Insert']>
-      }
       notifications: {
         Row: {
           id: string
           user_id: string
           type: 'success' | 'error' | 'warning' | 'info' | 'status_change' | 'invoice_ready' | 
-                'invoice_paid' | 'payment_received' | 'payment_due' | 'request_update'
+                'invoice_paid' | 'payment_received' | 'payment_due' | 'request_update' | 'email_sent'
           content: string
           reference_id: string | null
           reference_type: string
@@ -245,9 +230,18 @@ export function isSupabaseRequestResponse(obj: any): obj is SupabaseRequestRespo
     && Array.isArray(obj.customer);
 }
 
-export type Activity = Database['public']['Tables']['activity_log']['Row']
-export type Notification = Database['public']['Tables']['notifications']['Row']
-export type NotificationType = Notification['type']
+export type NotificationType = 
+  | 'success' 
+  | 'error' 
+  | 'warning' 
+  | 'info' 
+  | 'status_change' 
+  | 'invoice_ready'
+  | 'invoice_paid' 
+  | 'payment_received' 
+  | 'payment_due' 
+  | 'request_update'
+  | 'email_sent'
 
 export type RequestStatus = 'pending' | 'notified' | 'resolved'
 export type ProductStatus = 'active' | 'inactive'
@@ -257,24 +251,33 @@ export interface User extends TableRow<'users'> {
 }
 
 export interface Request extends TableRow<'requests'> {
-  user: User
-  resolution_status: RequestStatus
-  created_at: string
+  product: {
+    id: string
+    name: string
+    status: string
+  }
+  customer: {
+    id: string
+    email: string
+  }
   status: 'pending' | 'approved' | 'rejected'
-  invoice_status: 'paid' | 'unpaid'
+  resolution_status: 'pending' | 'notified' | 'resolved'
   notification_sent: boolean
+  created_at: string
+  quantity: number
+  budget: number
 }
 
 export type ProductMedia = TableRow<'product_media'>
 export type Category = TableRow<'categories'>
 
-// Base product type (for simple cases)
+// Base product type
 interface BaseProduct extends TableRow<'products'> {
   media?: ProductMedia[]
   category?: Category
 }
 
-// Active product handling
+// Product with different states
 export interface ActiveProduct extends BaseProduct {
   requests: (Request & {
     invoice_status: 'paid' | 'unpaid'
@@ -282,7 +285,6 @@ export interface ActiveProduct extends BaseProduct {
   })[]
 }
 
-// Inactive product handling
 export interface InactiveProduct extends BaseProduct {
   requests: (Request & {
     invoice_status: InvoiceStatus
@@ -291,17 +293,8 @@ export interface InactiveProduct extends BaseProduct {
   })[]
 }
 
-// Update the Product type
 export type Product = ActiveProduct | InactiveProduct
 
-export interface ActivityLog extends TableRow<'activity_log'> {
-  id: string
-  type: 'status_change' | 'notification' | 'resolution'
-  description: string
-  created_at: string
-}
-
-// Add this type definition
 export type ProductWithRequests = BaseProduct & {
   requests: Request[]
-} 
+}

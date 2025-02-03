@@ -1,7 +1,8 @@
 import { cn } from '@/app/components/lib/utils'
 import { motion } from 'framer-motion'
+import { ClockIcon, CheckCircleIcon, XCircleIcon, InboxIcon, TruckIcon } from '@heroicons/react/24/outline'
 
-export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled' | 'processing'
+export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled' | 'processing' | 'shipped'
 export type ProductStatus = 'active' | 'inactive'
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled'
 export type ResolutionStatus = 'pending' | 'notified' | 'resolved'
@@ -39,6 +40,11 @@ const statusStyles = {
     icon: <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
   },
   processing: { 
+    bg: 'bg-purple-100', 
+    text: 'text-purple-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+  },
+  shipped: { 
     bg: 'bg-purple-100', 
     text: 'text-purple-800',
     icon: <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
@@ -87,6 +93,14 @@ const statusStyles = {
     icon: <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
   },
 } as const;
+
+const statusIcons = {
+  pending: ClockIcon,
+  approved: CheckCircleIcon,
+  rejected: XCircleIcon,
+  fulfilled: InboxIcon,
+  shipped: TruckIcon
+};
 
 export function StatusBadge({ 
   status = 'pending',

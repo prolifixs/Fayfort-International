@@ -4,17 +4,38 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { InvoiceDetail } from '@/app/components/invoice/InvoiceDetail'
 import { ArrowLeft } from 'lucide-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Invoice } from '@/app/components/types/invoice'
 
 export default function InvoicePage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const supabase = createClientComponentClient()
+  const [showOrphanedDialog, setShowOrphanedDialog] = useState(false)
 
   useEffect(() => {
     const fetchInvoice = async () => {
       try {
-        const response = await fetch(`/api/invoices/${params.id}`)
-        const data = await response.json()
+        const { data, error } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            request:requests(
+              id,
+              status,
+              customer:users(email)
+            )
+          `)
+          .eq('id', params.id)
+          .single()
+
+        if (error) throw error
+        
+        if (!data.request) {
+          setShowOrphanedDialog(true)
+          return
+        }
+        
         setInvoice(data)
       } catch (error) {
         console.error('Failed to fetch invoice:', error)

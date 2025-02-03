@@ -1,4 +1,5 @@
 import { RequestStatus } from "./statusService";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 interface WebSocketMessage {
   type: string;
@@ -172,4 +173,36 @@ class WebSocketService {
   }
 }
 
-export const websocketService = new WebSocketService(); 
+export const websocketService = {
+  subscribe(event: string, callback: (data: any) => void) {
+    const supabase = createClientComponentClient();
+    
+    const channel = supabase
+      .channel('request_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requests'
+        },
+        (payload) => {
+          callback(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToStatus(callback: (status: ConnectionStatus) => void) {
+    const supabase = createClientComponentClient();
+    const channel = supabase
+      .channel('status')
+      .subscribe((status) => callback(status === 'SUBSCRIBED' ? 'connected' : 'disconnected'));
+
+    return () => supabase.removeChannel(channel);
+  }
+}; 

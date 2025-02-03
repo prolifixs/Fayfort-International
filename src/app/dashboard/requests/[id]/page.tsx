@@ -7,8 +7,11 @@ import { ChevronLeft, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteConfirmationModal } from '@/app/components/DeleteConfirmationModal'
 import { useToast } from '@/hooks/useToast'
+import { useParams } from 'next/navigation'
+import { RequestDetails } from '@/app/components/dashboard/UserRequestsTable'
 
-export default function RequestDetailPage({ params }: { params: { id: string } }) {
+export default function RequestDetailsPage() {
+  const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -35,6 +38,8 @@ export default function RequestDetailPage({ params }: { params: { id: string } }
     }
   }
 
+  const requestId = params.id as string
+
   return (
     <div className="py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,13 +64,13 @@ export default function RequestDetailPage({ params }: { params: { id: string } }
         </div>
 
         <div className="bg-white shadow rounded-lg p-6">
-          <RequestDetailsModal requestId={params.id} onClose={() => router.back()} />
+          <RequestDetails requestId={requestId} />
         </div>
 
         <DeleteConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
-          requestId={params.id}
+          requestId={requestId}
           onDeleted={handleDeleteRequest}
           itemName="Request"
         />

@@ -11,6 +11,8 @@ import type { RequestFormData } from '@/app/components/RequestFormModal';
 import { toast } from 'react-hot-toast';
 import ProtectedRoute from '@/app/components/ProtectedRoute';
 import type { TableRow } from '@/app/components/types/database.types';
+import { ChevronLeft } from 'lucide-react';
+
 
 type Product = TableRow<'products'> & {
   media?: ProductMedia[]
@@ -58,50 +60,68 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [params.id, router, supabase]);
 
-  const handleRequestSubmit = async (formData: RequestFormData) => {
+  const handleRequestSubmit = async (formData: RequestFormData): Promise<{ id: string }> => {
     try {
+      console.log('Starting request submission...', formData);
+      
+      // 1. Validate session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
+        console.log('No user session found');
         toast.error('Please login to submit a request');
         router.push('/login');
-        return;
+        return { id: '' };
       }
 
-      // Create request
-      const { error: requestError } = await supabase
+      // 2. Validate product
+      if (!product?.price_range) {
+        toast.error('Product price is not available');
+        return { id: '' };
+      }
+
+      // 3. Create request
+      const unitPrice = parseFloat(product.price_range);
+      const totalBudget = unitPrice * formData.quantity;
+      
+      const { data, error: requestError } = await supabase
         .from('requests')
         .insert([{
           product_id: params.id,
           customer_id: session.user.id,
           user_id: session.user.id,
           quantity: formData.quantity,
-          budget: parseFloat(product?.price_range || '0'),
+          budget: totalBudget,
           notes: formData.notes,
           status: 'pending'
-        }]);
+        }])
+        .select()
+        .single();
 
-      if (requestError) throw requestError;
+      if (requestError || !data) {
+        throw new Error('Failed to create request');
+      }
 
-      // Log activity
-      await supabase
-        .from('activity_log')
-        .insert([{
-          type: 'request',
-          description: `New request created for ${product?.name}`,
-          user_email: session.user.email
-        }]);
-
-      toast.success('Request submitted successfully');
-      setIsModalOpen(false);
+      console.log('Request created successfully:', data.id);
+      return { id: data.id };
     } catch (err) {
       console.error('Error submitting request:', err);
       toast.error('Failed to submit request');
+      throw err;
     }
   };
 
   return (
     <ProtectedRoute allowedRoles={['customer', 'admin', 'supplier']}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center text-gray-600 hover:text-gray-900"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            <span>Back to Catalog</span>
+          </button>
+        </div>
         {loading ? (
           <div className="flex justify-center items-center min-h-screen">
             <LoadingSpinner />

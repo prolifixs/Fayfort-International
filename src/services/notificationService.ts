@@ -1,3 +1,4 @@
+import { RequestStatus } from "@/app/components/types/request.types";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export type NotificationType = 
@@ -119,6 +120,7 @@ export class NotificationService {
     content: string;
     reference_id: string;
     reference_type: string;
+    metadata?: Record<string, any>;
   }) {
     return this.retryOperation(async () => {
       const { data: user } = await this.supabase.auth.getUser();
@@ -134,17 +136,77 @@ export class NotificationService {
     });
   }
 
-  async sendStatusUpdateNotification(requestId: string, newStatus: string): Promise<void> {
-    await this.addNotification('info', `Request ${requestId} status updated to ${newStatus}`, {
-      referenceType: 'request',
-      productId: requestId
-    });
+  async sendStatusUpdateNotification(requestId: string, newStatus: RequestStatus, options?: {
+    previousStatus?: RequestStatus;
+    userId?: string;
+    productName?: string;
+  }): Promise<void> {
+    try {
+      const { data: user } = await this.supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
+      // 1. Create notification record
+      await this.createNotification({
+        type: 'status_change',
+        content: `Request status updated to ${newStatus}`,
+        reference_id: requestId,
+        reference_type: 'request',
+        metadata: {
+          previous_status: options?.previousStatus,
+          new_status: newStatus,
+          product_name: options?.productName
+        }
+      });
+
+      // 2. Create activity log entry
+      await this.supabase.from('activity_log').insert({
+        type: 'status_change',
+        content: `Request ${requestId} status changed to ${newStatus}`,
+        reference_id: requestId,
+        user_id: user.user.id,
+        metadata: {
+          previous_status: options?.previousStatus,
+          new_status: newStatus,
+          product_name: options?.productName
+        }
+      });
+
+      // 3. Broadcast the update
+      await this.supabase.channel('requests')
+        .send({
+          type: 'broadcast',
+          event: 'status_update',
+          payload: { requestId, status: newStatus }
+        });
+
+    } catch (error) {
+      console.error('Failed to send status update notification:', error);
+      throw new Error('Failed to send status update notification');
+    }
   }
 
-  async sendResolutionNotification(requestId: string, resolution: string): Promise<void> {
-    await this.addNotification('info', `Request ${requestId} resolution updated to ${resolution}`, {
-      referenceType: 'request',
-      productId: requestId
+  // Add a method to handle request-specific notifications
+  async createRequestNotification(data: {
+    type: 'status_change' | 'request_created' | 'request_updated';
+    requestId: string;
+    message: string;
+    metadata?: Record<string, any>;
+  }) {
+    const { data: user } = await this.supabase.auth.getUser();
+    
+    return this.retryOperation(async () => {
+      return await this.supabase
+        .from('notifications')
+        .insert({
+          type: data.type,
+          content: data.message,
+          reference_id: data.requestId,
+          reference_type: 'request',
+          user_id: user.user?.id,
+          metadata: data.metadata,
+          read_status: false,
+          created_at: new Date().toISOString()
+        });
     });
   }
 }

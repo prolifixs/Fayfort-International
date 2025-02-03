@@ -23,6 +23,7 @@ export type ProductFormData = Omit<TableRow<'products'>, 'id' | 'created_at' | '
   media?: ProductMedia[]
   specifications?: Record<string, any>
   tempId?: string
+  status: string
 }
 
 interface LoadingState {
@@ -40,6 +41,7 @@ export function ProductForm({ initialProduct, onSubmit }: ProductFormProps) {
     availability: initialProduct?.availability ?? true,
     image_url: initialProduct?.image_url || null,
     media: initialProduct?.media || [],
+    status: initialProduct?.status || 'active'
   })
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)

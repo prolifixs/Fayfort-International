@@ -6,9 +6,10 @@ import { useToast } from '@/hooks/useToast'
 import { Download, Eye, Filter } from 'lucide-react'
 import { InvoiceDetailModal } from './InvoiceDetailModal'
 import { PDFPreview } from './PDFPreview'
-import { createNotification } from '@/app/components/lib/notifications'
+import { createNotification, getNotificationMessage } from '@/app/components/lib/notifications'
 import { InvoiceStatusBadge } from './InvoiceStatusBadge'
 import { useInvoiceStatus } from '@/app/hooks/useInvoiceStatus'
+import { Invoice } from '../types/invoice'
 import { emailService } from '@/services/emailService'
 import { pdfService } from '@/services/pdfService'
 import {
@@ -18,17 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
 import { MoreHorizontal } from 'lucide-react'
-
-interface Invoice {
-  id: string
-  request_id: string
-  user_id: string
-  status: 'draft' | 'sent' | 'paid' | 'cancelled'
-  amount: number
-  due_date: string
-  created_at: string
-  updated_at: string
-}
 
 export function InvoiceList() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -127,6 +117,7 @@ export function InvoiceList() {
         type: 'invoice_ready',
         content: getNotificationMessage('invoice_ready', { invoice_id: invoiceId }),
         reference_id: invoiceId,
+        reference_type: 'invoice',
         metadata: { invoice_id: invoiceId }
       })
 
@@ -157,15 +148,10 @@ export function InvoiceList() {
       // Create notification for status change
       await createNotification({
         type: 'status_change',
-        content: getNotificationMessage('status_change', { 
-          invoice_id: invoice.id, 
-          status: newStatus 
-        }),
+        content: getNotificationMessage('status_change', { invoice_id: invoice.id, status: newStatus }),
         reference_id: invoice.id,
-        metadata: { 
-          invoice_id: invoice.id,
-          status: newStatus
-        }
+        reference_type: 'invoice',
+        metadata: { invoice_id: invoice.id, status: newStatus }
       })
 
       toast({
