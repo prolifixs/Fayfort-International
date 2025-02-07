@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/app/components/lib/supabase'
+import { supabaseAdmin } from '@/app/components/lib/supabase'
 import { z } from 'zod'
 
 // Validation schemas
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const offset = (page - 1) * limit
   
   try {
-    let query = supabase
+    let query = supabaseAdmin
       .from('categories')
       .select('*', { count: 'exact' })  // Removed products count
     
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const validatedData = createCategorySchema.parse(body)
     
     // Check if category name already exists
-    const { data: existingCategory } = await supabase
+    const { data: existingCategory } = await supabaseAdmin
       .from('categories')
       .select('id')
       .ilike('name', validatedData.name)
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     }
     
     // Create new category
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('categories')
       .insert(validatedData)
       .select()
@@ -110,7 +110,7 @@ export async function PUT(request: Request) {
     
     // Check if name is being updated and already exists
     if (updates.name) {
-      const { data: existingCategory } = await supabase
+      const { data: existingCategory } = await supabaseAdmin
         .from('categories')
         .select('id')
         .ilike('name', updates.name)
@@ -125,7 +125,7 @@ export async function PUT(request: Request) {
       }
     }
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('categories')
       .update(updates)
       .eq('id', id)
@@ -164,7 +164,7 @@ export async function DELETE(request: Request) {
   
   try {
     // Check for related products
-    const { data: products } = await supabase
+    const { data: products } = await supabaseAdmin
       .from('products')
       .select('id')
       .eq('category', id)
@@ -178,7 +178,7 @@ export async function DELETE(request: Request) {
     }
     
     // Delete category
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('categories')
       .delete()
       .eq('id', id)

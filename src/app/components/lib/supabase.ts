@@ -4,13 +4,11 @@ import { Database } from '@/app/components/types/database.types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uxbakpeeqydatgvvdyaa.supabase.co'
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
 
 if (!supabaseUrl) throw new Error('Missing Supabase URL')
 if (!supabaseAnonKey) throw new Error('Missing Supabase Anon Key')
-if (!supabaseServiceKey) throw new Error('Missing Supabase Service Role Key')
 
-// Create single client instance for regular user operations using createClientComponentClient
+// Create single client instance for regular user operations
 export const supabase = createClientComponentClient<Database>({
   supabaseUrl,
   supabaseKey: supabaseAnonKey,
@@ -24,15 +22,21 @@ export const supabase = createClientComponentClient<Database>({
 })
 
 // Create admin client with service role key for administrative operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: false
-  },
-  db: {
-    schema: 'public'
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!serviceRoleKey) {
+  throw new Error('Missing Supabase Service Role Key')
+}
+
+export const supabaseAdmin = createClient<Database>(
+  supabaseUrl,
+  serviceRoleKey,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
   }
-})
+)
 
 // Social auth configuration
 export const socialAuthProviders = {
@@ -74,6 +78,6 @@ if (process.env.NODE_ENV === 'development') {
   console.log('🔗 Supabase Clients Initialized:', {
     url: supabaseUrl,
     anonKeyLength: supabaseAnonKey?.length,
-    serviceKeyLength: supabaseServiceKey?.length
+    serviceKeyLength: serviceRoleKey?.length
   })
 }

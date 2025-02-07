@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/app/components/lib/supabase'
+import { supabaseAdmin } from '@/app/components/lib/supabase'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const offset = (page - 1) * limit
   
   try {
-    let query = supabase
+    let query = supabaseAdmin
       .from('products')
       .select('*', { count: 'exact' })
     
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('products')
       .insert(body)
       .select()
@@ -74,7 +74,7 @@ export async function PUT(request: Request) {
     const body = await request.json()
     const { id, ...updates } = body
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('products')
       .update(updates)
       .eq('id', id)
@@ -104,7 +104,7 @@ export async function DELETE(request: Request) {
   }
   
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('products')
       .delete()
       .eq('id', id)
