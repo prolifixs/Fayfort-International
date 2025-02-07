@@ -1,4 +1,5 @@
-import { RequestStatus, InvoiceStatus } from '@/app/components/types/invoice'
+import { RequestStatus } from '@/app/components/types/request.types'
+import { InvoiceStatus } from '@/app/components/types/invoice'
 import { notificationService, NotificationType } from './notificationService';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { InvoiceService } from '@/app/components/lib/invoice/invoiceService';
@@ -37,6 +38,7 @@ const VALID_STATUS_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
   rejected: [],
   shipped: []
 };
+
 
 export const STATUS_MAPPINGS: Record<RequestStatus, StatusMapping> = {
   pending: {
@@ -131,9 +133,9 @@ export class StatusService {
       // Send notification with correct type
       await this.notificationService.sendStatusUpdateNotification(
         requestId,
-        newStatus,
+        newStatus as RequestStatus,
         {
-          previousStatus: currentStatus,
+          previousStatus: currentStatus as RequestStatus,
           notificationType: statusMapping.notification
         }
       );

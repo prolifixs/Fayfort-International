@@ -16,12 +16,12 @@ export const pdfService = {
         due_date: invoice.due_date,
         request: {
           customer: {
-            name: invoice.customer_name || invoice.user?.name || 'N/A',
-            email: invoice.customer_email || invoice.user?.email || 'N/A',
-            shipping_address: invoice.user?.shipping_address
+            name: invoice.request?.customer?.name || 'N/A',
+            email: invoice.request?.customer?.email || 'N/A',
+            shipping_address: invoice.request?.customer?.shipping_address
           }
         },
-        invoice_items: invoice.invoice_items.map(item => ({
+        invoices: invoice.invoice_items.map(item => ({
           ...item,
           product: {
             ...item.product,

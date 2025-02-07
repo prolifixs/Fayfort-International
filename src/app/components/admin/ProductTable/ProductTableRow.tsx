@@ -7,11 +7,6 @@ import { useRouter } from 'next/navigation'
 
 type ProductMedia = TableRow<'product_media'>
 type Category = TableRow<'categories'>
-type Product = TableRow<'products'> & {
-  media?: ProductMedia[]
-  category?: Category
-  requests?: any[]
-}
 
 interface ProductTableRowProps {
   product: ProductWithRequests

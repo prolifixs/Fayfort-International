@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { RequestStatus, InvoiceStatus } from '@/app/components/types/invoice'
+import { RequestStatus } from '@/app/components/types/request.types'
+import { InvoiceStatus } from '@/app/components/types/invoice'
 import { STATUS_MAPPINGS } from '@/services/statusService'
 import type { StatusHistoryEntry } from '@/services/statusService'
 
@@ -80,6 +81,6 @@ export function useStatusSync(requestId?: string) {
     invoiceStatus,
     statusHistory,
     isLoading,
-    statusMapping: requestStatus ? STATUS_MAPPINGS[requestStatus] : undefined
+    statusMapping: requestStatus && requestStatus in STATUS_MAPPINGS ? STATUS_MAPPINGS[requestStatus] : undefined
   }
 } 

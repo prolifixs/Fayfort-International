@@ -99,7 +99,7 @@ export function InvoicePDF({ invoice }: Props) {
             </View>
           </View>
 
-          {invoice.invoice_items.map((item) => (
+          {invoice.invoices.map((item) => (
             <View key={item.id} style={styles.tableRow}>
               <View style={[styles.tableCell, { flex: 2 }]}>
                 <Text>{item.product.name}</Text>

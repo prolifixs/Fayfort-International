@@ -6,10 +6,11 @@ import { StatusBadge } from './StatusBadge'
 import { StatusChangeForm } from './StatusChangeForm'
 import { useStatusUpdates } from './useStatusUpdates'
 import { useToast } from '@/hooks/useToast'
+import { RequestStatus } from '@/app/components/types/database.types'
 
 interface Request {
   id: string
-  status: 'request' | 'processing' | 'completed'
+  status: RequestStatus
   created_at: string
   updated_at: string
   user_id: string

@@ -10,7 +10,8 @@ import {
   Bell,
   CreditCard,
   FileText,
-  Clock
+  Clock,
+  Mail
 } from 'lucide-react'
 import { cn } from '@/app/components/lib/utils'
 import { NotificationType } from '@/app/components/types/database.types'
@@ -95,6 +96,10 @@ export function NotificationBadge({ type, className }: NotificationBadgeProps) {
     payment_due: {
       icon: Clock,
       className: 'text-orange-500 bg-orange-50'
+    },
+    email_sent: {
+      icon: Mail,
+      className: 'text-blue-500 bg-blue-50'
     },
     request_update: {
       icon: Bell,

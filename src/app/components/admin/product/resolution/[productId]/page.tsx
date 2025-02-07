@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ResolutionView } from '@/app/components/admin/product/resolution/ResolutionView'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Product, Request as DatabaseRequest } from '@/app/components/types/database.types'
+import { ProductWithRequests } from '@/app/components/types/database.types'
 import { toast } from 'react-hot-toast'
 
 export default function ResolutionPage() {
   const supabase = createClientComponentClient()
   const params = useParams()
   const router = useRouter()
-  const [product, setProduct] = useState<Product | null>(null)
+  const [product, setProduct] = useState<ProductWithRequests | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -77,8 +77,8 @@ export default function ResolutionPage() {
   if (!product) return <div>Product not found</div>
 
   return <ResolutionView 
-    product={product as Product & {
-      requests: Array<DatabaseRequest & {
+    product={product as ProductWithRequests & {
+      requests: Array<ProductWithRequests & {
         invoice_status: string;
         resolution_status: string;
         notification_sent: boolean;

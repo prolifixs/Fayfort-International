@@ -26,6 +26,7 @@ export function useInvoiceStatus() {
         type: 'status_change',
         content: `Invoice #${invoice.id} status changed to ${newStatus}`,
         reference_id: invoice.id,
+        reference_type: 'invoice',
         metadata: {
           invoice_id: invoice.id,
           status: newStatus

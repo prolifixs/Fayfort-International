@@ -1,4 +1,4 @@
-import { ProductFormData } from "@/app/components/ProductFormModal"
+import { ProductFormData } from "@/app/components/admin/ProductForm/ProductForm"
 
 export async function createProduct(formData: ProductFormData & { tempId: string }) {
   try {

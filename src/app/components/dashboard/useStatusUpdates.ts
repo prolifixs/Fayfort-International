@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { RequestStatus } from '@/app/components/types/database.types'
 
 interface Request {
   id: string
@@ -10,7 +11,7 @@ interface Request {
 }
 
 export function useStatusUpdates(requestId?: string) {
-  const [status, setStatus] = useState<'request' | 'processing' | 'completed' | null>(null)
+  const [status, setStatus] = useState<RequestStatus | null>(null)
   const supabase = createClientComponentClient()
 
   useEffect(() => {

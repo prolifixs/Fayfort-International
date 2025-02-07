@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useToast } from '@/hooks/useToast'
 import { Download, Eye, Filter } from 'lucide-react'
-import { InvoiceDetailModal } from './InvoiceDetailModal'
 import { PDFPreview } from './PDFPreview'
 import { createNotification, getNotificationMessage } from '@/app/components/lib/notifications'
 import { InvoiceStatusBadge } from './InvoiceStatusBadge'
@@ -19,6 +18,8 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
 import { MoreHorizontal } from 'lucide-react'
+import { InvoiceDetail } from './InvoiceDetail'
+import { Dialog } from '@headlessui/react'
 
 export function InvoiceList() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -263,11 +264,14 @@ export function InvoiceList() {
       </div>
 
       {selectedInvoice && (
-        <InvoiceDetailModal
-          invoice={selectedInvoice}
-          onClose={() => setSelectedInvoice(null)}
-          onDownload={handleDownload}
-        />
+        <Dialog open={!!selectedInvoice} onClose={() => setSelectedInvoice(null)}>
+          <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <Dialog.Panel className="mx-auto max-w-4xl w-full bg-white rounded-lg shadow-xl">
+              <InvoiceDetail invoiceId={selectedInvoice.id} />
+            </Dialog.Panel>
+          </div>
+        </Dialog>
       )}
     </div>
   )

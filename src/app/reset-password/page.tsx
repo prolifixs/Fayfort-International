@@ -51,7 +51,7 @@ export default function ResetPasswordPage() {
       
       const { email } = tokenService.validateResetToken(token);
       if (email) {
-        await emailService.sendPasswordResetSuccessEmail(email);
+        await emailService.sendPasswordResetEmail(email);
       }
       
       // Remove the used token

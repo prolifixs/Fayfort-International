@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { InvoiceData } from '../../types/invoice';
+import { InvoiceData } from '@/app/components/types/invoice';
 
 function getStatusColor(status: string): string {
   switch (status.toLowerCase()) {
@@ -51,7 +51,7 @@ export async function generateInvoicePDF(invoice: InvoiceData): Promise<Buffer> 
       });
 
       yPos += 10;
-      invoice.invoice_items?.forEach(item => {
+      invoice.invoices?.forEach(item => {
         doc.text(item.product.name, columnPositions[0], yPos);
         doc.text(item.quantity.toString(), columnPositions[1], yPos);
         doc.text(`$${item.unit_price.toFixed(2)}`, columnPositions[2], yPos);

@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 import { generateInvoicePDF } from '@/app/components/lib/pdf/generateInvoicePDF'
-import { InvoiceData, NotificationEmailData } from '@/app/components/types/invoice'
+import { InvoiceData, NotificationEmailData, Invoice } from '@/app/components/types/invoice'
 import { render } from '@react-email/render'
 import { InvoiceEmail } from '../email/templates/InvoiceEmail'
 import { StatusChangeEmail } from '../email/templates/StatusChangeEmail'
@@ -9,14 +9,28 @@ import { emailQueueService } from '@/services/emailQueueService'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-export async function sendInvoiceEmail(invoice: InvoiceData) {
+export async function sendInvoiceEmail(invoice: Invoice) {
   const [pdfBuffer, emailHtml] = await Promise.all([
-    generateInvoicePDF(invoice),
+    generateInvoicePDF({
+      id: invoice.id,
+      status: invoice.status,
+      amount: invoice.amount,
+      created_at: invoice.created_at,
+      due_date: invoice.due_date,
+      request: invoice.request ? {
+        customer: {
+          name: invoice.request.customer.name,
+          email: invoice.request.customer.email,
+          shipping_address: invoice.request.customer.shipping_address
+        }
+      } : { customer: { name: '', email: '' } },
+      invoices: invoice.invoice_items
+    }),
     render(InvoiceEmail({ invoice, previewMode: false }))
   ])
   
   await emailQueueService.addToQueue({
-    to: invoice.request.customer.email,
+    to: invoice.request?.customer?.email || 'no-reply@example.com',
     subject: `Invoice #${invoice.id} from Your Company`,
     html: emailHtml,
     attachments: [
@@ -28,15 +42,15 @@ export async function sendInvoiceEmail(invoice: InvoiceData) {
   })
 }
 
-export async function sendStatusChangeEmail(invoice: InvoiceData, previousStatus: 'draft' | 'sent' | 'paid' | 'cancelled') {
+export async function sendStatusChangeEmail(invoice: Invoice, previousStatus: 'draft' | 'sent' | 'paid' | 'cancelled') {
   const emailHtml = await render(StatusChangeEmail({ 
-    invoice, 
+    invoice,
     previousStatus, 
     previewMode: false 
   }))
   
   await emailQueueService.addToQueue({
-    to: invoice.request.customer.email,
+    to: invoice.request?.customer?.email || 'no-reply@example.com',
     subject: `Invoice #${invoice.id} Status Updated`,
     html: emailHtml
   })

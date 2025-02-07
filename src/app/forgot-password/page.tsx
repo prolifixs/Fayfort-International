@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import LoadingSpinner from '../components/lib/LoadingSpinner';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import { emailService } from '@/services/emailService';
 import { tokenService } from '@/services/tokenService';
 import { rateLimiterService } from '@/services/rateLimiterService';
+
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -29,8 +30,7 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const resetToken = tokenService.generateResetToken(email);
-      await emailService.sendPasswordResetEmail(email, resetToken);
+      await emailService.sendPasswordResetEmail(email);
       
       setMessage(
         remainingAttempts > 0 

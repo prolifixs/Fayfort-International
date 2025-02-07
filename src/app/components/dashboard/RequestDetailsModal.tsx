@@ -9,7 +9,7 @@ import { format } from 'date-fns'
 
 interface RequestDetails {
   id: string
-  status: string
+  status: "active" | "inactive" | "paid" | "pending" | "approved" | "fulfilled" | "shipped" | "notified" | "resolved" | "draft" | "sent" | "cancelled"
   created_at: string
   product: { name: string }
   quantity: number
@@ -17,7 +17,7 @@ interface RequestDetails {
   notes?: string
   invoice?: {
     id: string
-    status: string
+    status: "active" | "inactive" | "paid" | "pending" | "approved" | "fulfilled" | "shipped" | "notified" | "resolved" | "draft" | "sent" | "cancelled"
     amount: number
   }
 }

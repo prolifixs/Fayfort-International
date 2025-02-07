@@ -1,10 +1,10 @@
 import { ProductTable } from '@/app/components/admin/ProductTable/ProductTable'
-import type { Product } from '@/app/components/admin/ProductTable/types'
+import { ProductWithRequests } from '@/app/components/types/database.types'
 
 interface ActiveProductsTabProps {
-  products: Product[]
-  onEdit: ((product: Product | undefined) => void) | undefined
-  onDelete?: (product: Product) => void
+  products: ProductWithRequests[]
+  onEdit: ((product: ProductWithRequests | undefined) => void) | undefined
+  onDelete?: (product: ProductWithRequests) => void
   selectedProducts?: string[]
   onSelectProduct?: (productId: string) => void
   onSelectAll?: () => void

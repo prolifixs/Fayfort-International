@@ -15,13 +15,16 @@ interface StatusChangeFormProps {
   disabled?: boolean
 }
 
-const statusChangeMap: Record<RequestStatus, { notificationType: NotificationType }> = {
-  pending: { notificationType: 'payment_pending' },
-  approved: { notificationType: 'success' },
-  fulfilled: { notificationType: 'payment_confirmed' },
-  shipped: { notificationType: 'success' },
-  rejected: { notificationType: 'status_change' }
+const statusChangeMap: Record<RequestStatus, { notificationType: 'request' | 'resolution' }> = {
+  pending: { notificationType: 'request' },
+  approved: { notificationType: 'request' },
+  fulfilled: { notificationType: 'request' },
+  shipped: { notificationType: 'request' },
+  notified: { notificationType: 'resolution' },
+  resolved: { notificationType: 'resolution' },
+  rejected: { notificationType: 'request' }
 }
+
 
 
 export function StatusChangeForm({ 
@@ -40,8 +43,11 @@ export function StatusChangeForm({
     approved: ['fulfilled'],
     fulfilled: ['shipped'],
     shipped: [],
+    notified: [],
+    resolved: [],
     rejected: []
   }
+
 
 
   const nextStatuses = statusOptions[currentStatus] || []

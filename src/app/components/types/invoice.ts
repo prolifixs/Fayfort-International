@@ -1,3 +1,5 @@
+import { RequestStatus as DatabaseRequestStatus } from './database.types'
+
 export interface Customer {
   name: string
   email: string
@@ -48,7 +50,7 @@ export interface InvoiceData {
   invoices: InvoiceItem[];
 }
 
-export type RequestStatus = 'pending' | 'approved' | 'fulfilled' | 'shipped' | 'rejected';
+export type RequestStatus = DatabaseRequestStatus
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled';
 export type ProductStatus = 'active' | 'inactive';
 export type ResolutionStatus = 'pending' | 'notified' | 'resolved';
@@ -58,8 +60,11 @@ export const REQUEST_TO_INVOICE_STATUS: Record<RequestStatus, InvoiceStatus> = {
   approved: 'sent',
   fulfilled: 'paid',
   rejected: 'cancelled',
-  shipped: 'paid'
+  shipped: 'paid',
+  notified: 'sent',
+  resolved: 'paid'
 };
+
 
 
 export interface NotificationEmailData {

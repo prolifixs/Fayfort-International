@@ -2,8 +2,18 @@ import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useToast } from '@/hooks/useToast'
 
+interface Notification {
+  id: string
+  type: string
+  content: string
+  reference_id: string
+  reference_type: string
+  created_at: string
+  metadata?: Record<string, any>
+}
+
 export function useNotifications() {
-  const [notifications, setNotifications] = useState([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
   const { toast } = useToast()
@@ -38,7 +48,7 @@ export function useNotifications() {
           table: 'notifications' 
         }, 
         (payload) => {
-          setNotifications(current => [payload.new, ...current])
+          setNotifications(current => [payload.new as Notification, ...current])
           toast({
             title: 'New Notification',
             description: payload.new.content,

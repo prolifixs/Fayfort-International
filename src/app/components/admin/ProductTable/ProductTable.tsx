@@ -19,8 +19,8 @@ type Product = TableRow<'products'> & {
 interface ProductTableProps {
   products: ProductWithRequests[]
   view: 'active' | 'inactive'
-  onEdit?: ((product: Product | undefined) => void)
-  onDelete?: (product: Product) => void
+  onEdit?: ((product: ProductWithRequests | undefined) => void)
+  onDelete?: (product: ProductWithRequests) => void
   selectedProducts?: string[]
   onSelectProduct?: (productId: string) => void
   onSelectAll?: () => void
@@ -46,7 +46,7 @@ export function ProductTable({
   const [previewMedia, setPreviewMedia] = useState<ProductMedia[]>([])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
-  const handleDelete = async (product: Product) => {
+  const handleDelete = async (product: ProductWithRequests) => {
     try {
       if (product.media?.length) {
         const mediaService = new MediaService(supabase)

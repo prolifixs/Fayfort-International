@@ -1,5 +1,6 @@
 import { RequestProcessingService } from '../app/components/lib/requests/requestProcessor';
 import type { NotificationService } from './notificationService';
+import { RequestStatus } from '@/app/components/types/request.types'
 
 export class RequestManagementService {
   constructor(
@@ -15,7 +16,7 @@ export class RequestManagementService {
         await this.requestProcessor.processUnpaidRequest(requestId)
       }
       
-      await this.notificationService.sendStatusUpdateNotification(requestId, newStatus)
+      await this.notificationService.sendStatusUpdateNotification(requestId, newStatus as RequestStatus)
     } catch (error) {
       console.error('Status change error:', error)
       throw error
@@ -25,7 +26,7 @@ export class RequestManagementService {
   async handleResolution(requestId: string, resolution: string): Promise<void> {
     try {
       await this.updateResolutionStatus(requestId, resolution)
-      await this.notificationService.sendResolutionNotification(requestId, resolution)
+      await this.notificationService.sendStatusUpdateNotification(requestId, resolution as RequestStatus)
     } catch (error) {
       console.error('Resolution error:', error)
       throw error
@@ -33,6 +34,6 @@ export class RequestManagementService {
   }
 
   private async updateResolutionStatus(requestId: string, resolution: string): Promise<void> {
-    await this.requestProcessor.updateRequestStatus(requestId, resolution, 'resolution', 'unavailable');
+    await this.requestProcessor.updateRequestStatus(requestId, resolution as RequestStatus);
   }
 } 

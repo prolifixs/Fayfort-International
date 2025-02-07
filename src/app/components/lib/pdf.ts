@@ -61,10 +61,11 @@ export async function generatePDFKit(rawInvoice: any): Promise<Buffer> {
       doc.fontSize(10).fillColor('#000000')
       let rowTop = tableTop + 25
 
-      invoice.invoice_items.forEach((item: InvoiceItem) => {
+      invoice.invoices.forEach((item: InvoiceItem) => {
         doc
           .text(item.product.name, 50, rowTop)
           .text(item.quantity.toString(), 50 + columnWidth, rowTop)
+
           .text(`$${item.unit_price.toFixed(2)}`, 50 + (columnWidth * 2), rowTop)
           .text(`$${item.total_price.toFixed(2)}`, 50 + (columnWidth * 3), rowTop)
         
