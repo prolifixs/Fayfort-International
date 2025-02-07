@@ -10,8 +10,10 @@ export type NotificationType =
   | 'payment_pending' 
   | 'unavailable' 
   | 'delayed' 
-  | 'cancelled';
-export type ProductNotificationType = 'status_change' | 'product_update' | 'system';
+  | 'cancelled'
+  | 'status_change'
+  | 'shipping_confirmed';
+export type ProductNotificationType = NotificationType | 'product_update' | 'system';
 
 interface Notification {
   id: string;
@@ -140,6 +142,7 @@ export class NotificationService {
     previousStatus?: RequestStatus;
     userId?: string;
     productName?: string;
+    notificationType?: NotificationType; 
   }): Promise<void> {
     try {
       const { data: user } = await this.supabase.auth.getUser();

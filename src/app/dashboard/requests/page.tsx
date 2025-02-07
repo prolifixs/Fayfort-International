@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { UserRequestsTable } from '@/app/components/dashboard/UserRequestsTable'
-import RequestFormModal from '@/app/components/RequestFormModal'
+import RequestFormModal from '@/app/components/dashboard/RequestFormModal'
 import { useToast } from '@/hooks/useToast'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/app/components/types/database.types'

@@ -1,6 +1,6 @@
 'use client'
 
-import { ProfileInfo } from '@/app/components/profile/ProfileInfo'
+import { ProfileInfo } from '@/app/components/dashboard/profile/ProfileInfo'
 import { useUsers } from '@/app/hooks/useUsers'
 
 export default function ProfilePage() {

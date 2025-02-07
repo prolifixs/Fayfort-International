@@ -48,7 +48,19 @@ export interface InvoiceData {
   invoices: InvoiceItem[];
 }
 
-export type InvoiceStatus = 'paid' | 'unpaid' | 'pending'
+export type RequestStatus = 'pending' | 'approved' | 'fulfilled' | 'shipped' | 'rejected';
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled';
+export type ProductStatus = 'active' | 'inactive';
+export type ResolutionStatus = 'pending' | 'notified' | 'resolved';
+
+export const REQUEST_TO_INVOICE_STATUS: Record<RequestStatus, InvoiceStatus> = {
+  pending: 'draft',
+  approved: 'sent',
+  fulfilled: 'paid',
+  rejected: 'cancelled',
+  shipped: 'paid'
+};
+
 
 export interface NotificationEmailData {
   to: string

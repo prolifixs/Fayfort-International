@@ -4,12 +4,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Link from 'next/link';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
-import RequestFormModal from '@/app/components/RequestFormModal';
-import { MediaGallery } from '@/app/components/MediaGallery/MediaGallery';
-import type { RequestFormData } from '@/app/components/RequestFormModal';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
+import RequestFormModal from '@/app/components/dashboard/RequestFormModal';
+import { MediaGallery } from '@/app/components/common/MediaGallery/MediaGallery';
+import type { RequestFormData } from '@/app/components/dashboard/RequestFormModal';
 import { toast } from 'react-hot-toast';
-import ProtectedRoute from '@/app/components/ProtectedRoute';
+import ProtectedRoute from '@/app/components/common/ProtectedRoute';
 import type { TableRow } from '@/app/components/types/database.types';
 import { ChevronLeft } from 'lucide-react';
 

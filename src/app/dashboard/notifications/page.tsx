@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { NotificationList } from '@/app/components/notification/NotificationList'
-import { NotificationFilters } from '@/app/components/notification/NotificationFilters'
+import { NotificationList } from '@/app/components/dashboard/notification/NotificationList'
+import { NotificationFilters } from '@/app/components/dashboard/notification/NotificationFilters'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useToast } from '@/hooks/useToast'
 

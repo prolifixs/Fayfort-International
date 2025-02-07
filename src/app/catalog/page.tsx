@@ -1,14 +1,14 @@
 'use client';
 
-import ProtectedRoute from '@/app/components/ProtectedRoute';
+import ProtectedRoute from '@/app/components/common/ProtectedRoute';
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
-import Pagination from '@/app/components/Pagination';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
+import Pagination from '@/app/components/admin/Pagination';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import type { Database, TableRow } from '@/app/components/types/database.types';
-import { ProductCard } from '@/app/components/ProductCard/ProductCard';
+import { ProductCard } from '@/app/components/common/ProductCard/ProductCard';
 import { useRouter } from 'next/navigation';
 
 type ProductMedia = TableRow<'product_media'>;

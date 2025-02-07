@@ -1,23 +1,34 @@
 import { cn } from '@/app/components/lib/utils'
 import { motion } from 'framer-motion'
-import { ClockIcon, CheckCircleIcon, XCircleIcon, InboxIcon, TruckIcon } from '@heroicons/react/24/outline'
+import { 
+  ClockIcon, 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  InboxIcon, 
+  TruckIcon,
+  DocumentIcon 
+} from '@heroicons/react/24/outline'
 
-export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled' | 'processing' | 'shipped'
+export type RequestStatus = 'pending' | 'approved' | 'fulfilled' | 'shipped'
 export type ProductStatus = 'active' | 'inactive'
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled'
 export type ResolutionStatus = 'pending' | 'notified' | 'resolved'
 export type AllStatus = RequestStatus | ProductStatus | InvoiceStatus | ResolutionStatus
 
+export type ProductBadgeStatus = 'active' | 'inactive'
+export type ResolutionBadgeStatus = 'pending' | 'notified' | 'resolved'
+
 interface StatusBadgeProps {
-  status?: AllStatus
+  status: ProductBadgeStatus | ResolutionBadgeStatus | RequestStatus | InvoiceStatus
   className?: string
   showIcon?: boolean
   type?: 'request' | 'product' | 'invoice' | 'resolution'
   showTimestamp?: boolean
   timestamp?: string
+  label?: string | number
 }
 
-const statusStyles = {
+const statusStyles: Record<AllStatus, { bg: string; text: string; icon: JSX.Element }> = {
   // Request statuses
   pending: { 
     bg: 'bg-yellow-100', 
@@ -29,38 +40,17 @@ const statusStyles = {
     text: 'text-green-800',
     icon: <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
   },
-  rejected: { 
-    bg: 'bg-red-100', 
-    text: 'text-red-800',
-    icon: <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-  },
   fulfilled: { 
     bg: 'bg-blue-100', 
     text: 'text-blue-800',
     icon: <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
   },
-  processing: { 
-    bg: 'bg-purple-100', 
-    text: 'text-purple-800',
-    icon: <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
-  },
   shipped: { 
     bg: 'bg-purple-100', 
     text: 'text-purple-800',
-    icon: <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
   },
-  // Product statuses
-  active: { 
-    bg: 'bg-green-100', 
-    text: 'text-green-800',
-    icon: <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-  },
-  inactive: { 
-    bg: 'bg-red-100', 
-    text: 'text-red-800',
-    icon: <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-  },
-  // Invoice statuses
+  // Invoice statuses (added/modified)
   draft: {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
@@ -81,7 +71,58 @@ const statusStyles = {
     text: 'text-red-800',
     icon: <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
   },
-  // Resolution statuses
+  // Other existing statuses...
+  active: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+  },
+  inactive: {
+    bg: 'bg-gray-100',
+    text: 'text-gray-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+  },
+  notified: {
+    bg: 'bg-blue-100',
+    text: 'text-blue-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+  },
+  resolved: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+  }
+};
+
+const statusIcons = {
+  pending: ClockIcon,
+  approved: CheckCircleIcon,
+  fulfilled: InboxIcon,
+  shipped: TruckIcon,
+  draft: DocumentIcon,
+  // Add other icons as needed
+};
+
+// Add specific styles for product and resolution
+const productStyles = {
+  active: { 
+    bg: 'bg-green-100', 
+    text: 'text-green-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+  },
+  inactive: { 
+    bg: 'bg-gray-100', 
+    text: 'text-gray-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+  }
+}
+
+const resolutionStyles = {
+  pending: { 
+    bg: 'bg-yellow-100', 
+    text: 'text-yellow-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+  },
   notified: { 
     bg: 'bg-blue-100', 
     text: 'text-blue-800',
@@ -91,16 +132,8 @@ const statusStyles = {
     bg: 'bg-green-100', 
     text: 'text-green-800',
     icon: <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-  },
-} as const;
-
-const statusIcons = {
-  pending: ClockIcon,
-  approved: CheckCircleIcon,
-  rejected: XCircleIcon,
-  fulfilled: InboxIcon,
-  shipped: TruckIcon
-};
+  }
+}
 
 export function StatusBadge({ 
   status = 'pending',
@@ -108,7 +141,8 @@ export function StatusBadge({
   showIcon = true,
   type = 'request',
   showTimestamp = false,
-  timestamp
+  timestamp,
+  label
 }: StatusBadgeProps) {
   const style = statusStyles[status] || statusStyles.pending;
 
@@ -128,6 +162,11 @@ export function StatusBadge({
       >
         {showIcon && style.icon}
         {type === 'resolution' ? `Resolution: ${status}` : status}
+        {label && (
+          <span className="ml-2 text-sm font-medium text-gray-500">
+            {label}
+          </span>
+        )}
       </span>
       {showTimestamp && timestamp && (
         <span className="text-xs text-gray-500 mt-1">

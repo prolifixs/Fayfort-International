@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/AuthContext';
-import StatisticsChart from '../components/charts/StatisticsChart';
+import StatisticsChart from '../components/admin/charts/StatisticsChart';
 
 interface DashboardStats {
   totalUsers: number;
@@ -115,15 +115,24 @@ export default function AdminDashboard() {
 
   async function fetchDashboardData() {
     try {
+      console.log('[Dashboard] Starting data fetch...');
+      
+      const productsQuery = supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('availability', true);
+      
+      console.log('[Dashboard] Products query:', productsQuery);
+
       const [
         { count: userCount },
-        { count: productCount },
+        { count: productCount, error: productError },
         { count: requestCount },
         { data: categories },
-        { data: recentRequests }
+        { data: recentRequests, error: requestError }
       ] = await Promise.all([
         supabase.from('users').select('*', { count: 'exact', head: true }),
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('availability', true),
+        productsQuery,
         supabase.from('requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('categories').select('*', { count: 'exact' }),
         supabase.from('requests')
@@ -133,13 +142,11 @@ export default function AdminDashboard() {
             created_at,
             quantity,
             budget,
-            customer_id,
-            product_id,
-            customer:users!left (
+            customer:users (
               id,
               email
             ),
-            product:products!requests_product_id_fkey (
+            product:products (
               id,
               name
             )
@@ -147,7 +154,15 @@ export default function AdminDashboard() {
           .order('created_at', { ascending: false })
       ]);
 
-      console.log('Recent Requests:', recentRequests);
+      console.log('[Dashboard] Query Results:', {
+        userCount,
+        productCount,
+        productError,
+        requestCount,
+        categoriesCount: categories?.length,
+        recentRequestsCount: recentRequests?.length,
+        requestError
+      });
 
       setStats({
         totalUsers: userCount || 0,
@@ -157,7 +172,7 @@ export default function AdminDashboard() {
         recentRequests: recentRequests || []
       });
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('[Dashboard] Error fetching data:', error);
     } finally {
       setIsLoading(false);
     }

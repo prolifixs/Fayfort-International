@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Sidebar } from '@/app/components/dashboard/Sidebar'
 import { usePathname, useRouter } from 'next/navigation'
-import { InvoiceDetail } from '@/app/components/invoice/InvoiceDetail'
+import { InvoiceDetail } from '@/app/components/common/invoice/InvoiceDetail'
 import { Button } from '@/app/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
 

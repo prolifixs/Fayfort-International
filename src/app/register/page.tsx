@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import LoadingSpinner from '../components/LoadingSpinner'
+import LoadingSpinner from '../components/common/LoadingSpinner'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 import { checkPasswordStrength } from '@/app/utils/passwordStrength'

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { ProductCard } from '@/app/components/ProductCard/ProductCard';
+import { ProductCard } from '@/app/components/common/ProductCard/ProductCard';
 import { useRouter } from 'next/navigation';
 import type { Database } from '@/app/components/types/database.types';
 

@@ -1,5 +1,5 @@
 import { headers } from 'next/headers'
-import ProtectedRoute from '@/app/components/ProtectedRoute'
+import ProtectedRoute from '@/app/components/common/ProtectedRoute'
 import { supabaseAdmin } from '@/app/components/lib/supabase'
 
 export async function generateMetadata() {

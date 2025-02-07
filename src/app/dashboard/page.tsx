@@ -3,7 +3,7 @@
 import { DashboardNotifications } from '../components/dashboard/DashboardNotifications'
 import { RequestFlow } from '../components/dashboard/RequestFlow'
 import { UserRequestsTable } from '../components/dashboard/UserRequestsTable'
-import RequestFormModal from '../components/RequestFormModal'
+import RequestFormModal from '../components/dashboard/RequestFormModal'
 import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useToast } from '@/hooks/useToast'
@@ -11,7 +11,7 @@ import { Database } from '@/app/components/types/database.types'
 import { NewArrivals } from '@/app/components/catalog/NewArrivals'
 import { useRouter } from 'next/navigation'
 import { FayfayAIPreview } from '../components/dashboard/FayfayAIPreview'
-import { RequestTabs } from '../components/dashboard/RequestTabs'
+import { RequestTabs } from '../components/admin/RequestTabs'
 
 type Product = Database['public']['Tables']['products']['Row']
 

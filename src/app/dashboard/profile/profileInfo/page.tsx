@@ -1,6 +1,6 @@
 'use client'
 
-import { ProfileInfo } from '@/app/components/profile/ProfileInfo'
+import { ProfileInfo } from '@/app/components/dashboard/profile/ProfileInfo'
 import { useUsers } from '@/app/hooks/useUsers'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/app/components/types/database.types'

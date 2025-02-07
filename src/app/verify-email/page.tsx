@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 
 export default function VerifyEmailPage() {

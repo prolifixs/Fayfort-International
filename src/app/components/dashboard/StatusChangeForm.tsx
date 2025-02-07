@@ -1,58 +1,72 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useToast } from '@/hooks/useToast'
-import { useInvoiceGeneration } from './useInvoiceGeneration'
+import { Button } from '@/app/components/ui/button'
+import { useToast } from '@/app/components/ui/use-toast'
+import { RequestStatus } from '@/app/components/types/invoice'
+import { RequestProcessingService } from '@/app/components/lib/requests/requestProcessor'
+import { StatusBadge } from '@/app/components/ui/status/StatusBadge'
+import { NotificationType } from '@/services/notificationService'
 
 interface StatusChangeFormProps {
   requestId: string
-  currentStatus: 'request' | 'processing' | 'completed'
+  currentStatus: RequestStatus
   onStatusChange: () => void
+  disabled?: boolean
 }
 
-export function StatusChangeForm({ requestId, currentStatus, onStatusChange }: StatusChangeFormProps) {
-  const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState(currentStatus)
-  const supabase = createClientComponentClient()
-  const { toast } = useToast()
-  const { generateInvoice, loading: invoiceLoading } = useInvoiceGeneration()
+const statusChangeMap: Record<RequestStatus, { notificationType: NotificationType }> = {
+  pending: { notificationType: 'payment_pending' },
+  approved: { notificationType: 'success' },
+  fulfilled: { notificationType: 'payment_confirmed' },
+  shipped: { notificationType: 'success' },
+  rejected: { notificationType: 'status_change' }
+}
 
-  const statusOptions = {
-    request: ['processing'],
-    processing: ['completed'],
-    completed: []
+
+export function StatusChangeForm({ 
+  requestId, 
+  currentStatus, 
+  onStatusChange,
+  disabled = false 
+}: StatusChangeFormProps) {
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+  const requestProcessor = new RequestProcessingService()
+
+  // Define available status transitions
+  const statusOptions: Record<RequestStatus, RequestStatus[]> = {
+    pending: ['approved'],
+    approved: ['fulfilled'],
+    fulfilled: ['shipped'],
+    shipped: [],
+    rejected: []
   }
 
-  async function handleStatusChange(newStatus: string) {
+
+  const nextStatuses = statusOptions[currentStatus] || []
+
+  async function handleStatusChange(newStatus: RequestStatus) {
     setLoading(true)
     try {
-      // Update request status
-      const { error: statusError } = await supabase
-        .from('requests')
-        .update({ status: newStatus })
-        .eq('id', requestId)
-
-      if (statusError) throw statusError
-
-      // If status is completed, generate invoice
-      if (newStatus === 'completed') {
-        const invoice = await generateInvoice(requestId)
-        if (!invoice) throw new Error('Failed to generate invoice')
-      }
-
-      setStatus(newStatus as 'request' | 'processing' | 'completed')
-      onStatusChange()
+      const context = statusChangeMap[newStatus];
+      await requestProcessor.updateRequestStatus(
+        requestId, 
+        newStatus, 
+        context.notificationType
+      )
       
+      onStatusChange()
       toast({
-        title: 'Status updated successfully',
-        variant: 'success'
+        title: 'Status updated',
+        description: `Request status changed to ${newStatus}`,
+        variant: 'default'
       })
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Status update failed:', error)
       toast({
-        title: 'Error updating status',
-        description: 'Please try again later',
+        title: 'Update failed',
+        description: 'Could not update the status. Please try again.',
         variant: 'destructive'
       })
     } finally {
@@ -61,23 +75,36 @@ export function StatusChangeForm({ requestId, currentStatus, onStatusChange }: S
   }
 
   return (
-    <div className="flex items-center space-x-4">
-      <span className="text-sm font-medium text-gray-700">Status:</span>
-      <div className="relative">
-        <select
-          value={status}
-          onChange={(e) => handleStatusChange(e.target.value)}
-          disabled={loading || statusOptions[status].length === 0}
-          className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-        >
-          <option value={status}>{status}</option>
-          {statusOptions[status].map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">Current Status:</span>
+        <StatusBadge status={currentStatus} type="request" />
       </div>
+      
+      {nextStatuses.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">Change Status To:</span>
+          <div className="flex gap-2">
+            {nextStatuses.map((status) => (
+              <Button
+                key={status}
+                onClick={() => handleStatusChange(status)}
+                disabled={loading || disabled}
+                variant="outline"
+                size="sm"
+              >
+                {status}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="text-sm text-muted-foreground">
+          Updating status...
+        </div>
+      )}
     </div>
   )
 } 

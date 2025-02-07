@@ -1,6 +1,6 @@
 'use client'
 
-import { ProfileNav } from '@/app/components/profile/ProfileNav'
+import { ProfileNav } from '@/app/components/dashboard/profile/ProfileNav'
 
 export default function ProfileLayout({
   children,

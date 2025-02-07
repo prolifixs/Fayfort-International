@@ -2,6 +2,9 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { InvoiceVerificationService } from '@/app/components/lib/invoice/statusVerification'
 import { InvoiceService } from '@/app/components/lib/invoice/invoiceService'
 import { NotificationType } from '@/services/notificationService'
+import { RequestStatus, ResolutionStatus } from '@/app/components/types/database.types'
+
+
 
 interface RequestWithProduct {
   id: string;
@@ -20,37 +23,74 @@ interface RequestData {
   };
 }
 
+interface StatusChangeContext {
+  type: 'request' | 'product' | 'invoice' | 'resolution'
+  status: RequestStatus
+  notificationType: NotificationType
+}
+
+const statusChangeMap: Record<RequestStatus, StatusChangeContext> = {
+  pending: {
+    type: 'request',
+    status: 'pending',
+    notificationType: 'payment_pending'
+  },
+  approved: {
+    type: 'request',
+    status: 'approved',
+    notificationType: 'success'
+  },
+  fulfilled: {
+    type: 'request',
+    status: 'fulfilled',
+    notificationType: 'payment_confirmed'
+  },
+  shipped: {
+    type: 'request',
+    status: 'shipped',
+    notificationType: 'success'
+  },
+  rejected: {
+    type: 'request',
+    status: 'rejected',
+    notificationType: 'status_change'
+  },
+  notified: {
+    type: 'resolution',
+    status: 'notified',
+    notificationType: 'unavailable'
+  },
+  resolved: {
+    type: 'resolution',
+    status: 'resolved',
+    notificationType: 'success'
+  }
+}
+
 export class RequestProcessingService {
   private supabase = createClientComponentClient()
   private verificationService = new InvoiceVerificationService()
   private invoiceService = new InvoiceService()
 
+  private getStatusContext(status: RequestStatus): StatusChangeContext {
+    return statusChangeMap[status] || statusChangeMap.pending
+  }
+
   public async updateRequestStatus(
     requestId: string, 
-    status: string, 
-    type: 'resolution' | 'base' | 'invoice',
-    notificationType?: NotificationType
+    status: RequestStatus | ResolutionStatus,
+    type: 'request' | 'resolution' = 'request'
   ): Promise<void> {
-    if (type === 'resolution') {
-      await this.supabase
-        .from('resolution_statuses')
-        .upsert({
-          request_id: requestId,
-          status: status,
-          updated_at: new Date().toISOString()
-        })
-    } else {
-      await this.supabase
-        .from('requests')
-        .update({ status: status })
-        .eq('id', requestId)
-    }
-
-    if (notificationType) {
-      await this.updateNotificationStatus(requestId, notificationType)
-    }
-
-    await this.broadcastStatusUpdate(requestId)
+    const statusContext = statusChangeMap[status];
+    const { error } = await this.supabase
+      .from('requests')
+      .update({ 
+        [type === 'resolution' ? 'resolution_status' : 'status']: status,
+        notification_type: statusContext.notificationType
+      })
+      .eq('id', requestId)
+    
+    if (error) throw error
   }
 
   private async updateNotificationStatus(requestId: string, notificationType: NotificationType): Promise<void> {
@@ -83,19 +123,21 @@ export class RequestProcessingService {
       if (error) throw error
 
       // Update status based on notification type
-      const statusMap: Record<NotificationType, string> = {
-        unavailable: 'notified',
-        delayed: 'pending_deletion',
-        cancelled: 'resolved',
-        success: 'completed',
-        error: 'failed',
+      const statusMap: Record<NotificationType, RequestStatus> = {
+        unavailable: 'pending',
+        delayed: 'pending',
+        cancelled: 'pending',
+        success: 'approved',
+        error: 'pending',
         warning: 'pending',
-        info: 'updated',
-        payment_confirmed: 'paid',
-        payment_pending: 'unpaid'
-      }
+        info: 'pending',
+        payment_confirmed: 'approved',
+        payment_pending: 'pending',
+        status_change: 'pending',
+        shipping_confirmed: 'shipped'
+      } as const;
 
-      await this.updateRequestStatus(requestId, statusMap[type], 'resolution', type)
+      await this.updateRequestStatus(requestId, statusMap[type])
 
       // Send notification using the customer_id
       await this.supabase.from('notifications').insert({
@@ -121,14 +163,16 @@ export class RequestProcessingService {
       warning: `Warning for ${productName} request`,
       info: `Update for ${productName}`,
       payment_confirmed: `Payment confirmed for ${productName}`,
-      payment_pending: `Payment pending for ${productName}`
+      payment_pending: `Payment pending for ${productName}`,
+      status_change: `Status change for ${productName}`,
+      shipping_confirmed: `Shipping confirmed for ${productName}`
     };
     return messages[type];
   }
 
   async processPaidRequest(requestId: string): Promise<void> {
     try {
-      await this.updateRequestStatus(requestId, 'paid', 'resolution', 'payment_confirmed')
+      await this.updateRequestStatus(requestId, 'approved')  // Remove third parameter
       await this.sendNotifications(requestId, 'payment_confirmed')
       await this.updateUserInterface(requestId)
     } catch (error) {
@@ -139,8 +183,8 @@ export class RequestProcessingService {
 
   async processUnpaidRequest(requestId: string): Promise<void> {
     try {
-      await this.updateRequestStatus(requestId, 'unpaid', 'resolution', 'payment_pending' as NotificationType)
-      await this.sendNotifications(requestId, 'payment_pending' as NotificationType)
+      await this.updateRequestStatus(requestId, 'pending')  // Remove third parameter
+      await this.sendNotifications(requestId, 'payment_pending')
       await this.updateUserInterface(requestId)
     } catch (error) {
       console.error('Unpaid request processing error:', error)
@@ -180,7 +224,7 @@ export class RequestProcessingService {
       .select(`
         status,
         resolution_status,
-        product:products!inner (
+        product:products!requests_product_id_fkey (
           status
         )
       `)

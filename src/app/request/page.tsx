@@ -2,16 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
-import ProtectedRoute from '@/app/components/ProtectedRoute';
-import RequestsTable from '@/app/components/RequestsTable';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
+import ProtectedRoute from '@/app/components/common/ProtectedRoute';
+import RequestsTable from '@/app/components/admin/RequestsTable';
 import { toast } from 'react-hot-toast';
 import type { Database } from '@/app/components/types/database.types';
 import { RequestStatus, RequestWithRelations, SortField } from '../components/types/request.types';
-import RequestFilters from '@/app/components/RequestFilters';
-import { RequestGuide } from '@/app/components/request/RequestGuide';
-
-type Request = RequestWithRelations;
+import RequestFilters from '@/app/components/admin/RequestFilters';
+import { RequestGuide } from '@/app/components/dashboard/request/RequestGuide';
+import { statusService } from '@/services/statusService';
 
 type SortOrder = 'asc' | 'desc';
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
@@ -103,35 +102,16 @@ export default function RequestPage() {
 
   const handleStatusChange = async (requestId: string, newStatus: RequestStatus) => {
     try {
-      const { error } = await supabase
-        .from('requests')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', requestId);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-      if (error) throw error;
-
-      // Create notification for status change
-      await supabase
-        .from('notifications')
-        .insert({
-          type: 'status_change',
-          content: `Request ${requestId} has been ${newStatus}`,
-          reference_id: requestId,
-          read_status: false,
-          created_at: new Date().toISOString()
-        });
-
-      // Add to activity log
-      await supabase
-        .from('activity_log')
-        .insert({
-          type: 'status_change',
-          description: `Request ${requestId} ${newStatus}`,
-          created_at: new Date().toISOString()
-        });
+      await statusService.updateStatus(
+        requestId,
+        newStatus,
+        user.id,
+        undefined,
+        newStatus === 'shipped' ? getShippingInfo() : undefined
+      );
 
       toast.success(`Request ${newStatus} successfully`);
       await fetchRequests();
@@ -139,6 +119,16 @@ export default function RequestPage() {
       console.error('Error updating request status:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to update request status');
     }
+  };
+
+  // Helper function for shipping info
+  const getShippingInfo = () => {
+    // You can implement this based on your UI needs
+    return {
+      trackingNumber: '',
+      carrier: '',
+      shippingDate: new Date().toISOString()
+    };
   };
 
   const handleSort = (field: SortField) => {

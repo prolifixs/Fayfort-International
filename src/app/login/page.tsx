@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
-import LoadingSpinner from '../components/LoadingSpinner'
+import LoadingSpinner from '../components/common/LoadingSpinner'
 import { toast } from 'react-hot-toast'
 
 interface FormData {

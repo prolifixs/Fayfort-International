@@ -9,61 +9,31 @@ interface ShippingInfo {
 export class ShippingService {
   private supabase = createClientComponentClient();
 
-  async processShippingUpdate(requestId: string, shippingInfo: ShippingInfo) {
-    console.group('🚢 Processing Shipping Update');
+  async processShippingUpdate(requestId: string, shippingInfo: ShippingInfo): Promise<void> {
+    console.group('🚢 Shipping Update Flow');
+    console.log('1️⃣ Starting Shipping Update:', { requestId, shippingInfo });
     
     try {
-      // 1. Verify current status
-      const { data: currentRequest } = await this.supabase
-        .from('requests')
-        .select('status')
-        .eq('id', requestId)
-        .single();
-
-      if (!currentRequest || currentRequest.status !== 'fulfilled') {
-        throw new Error(`Invalid request status: ${currentRequest?.status}`);
-      }
-
-      // 2. Update in a single transaction
+      console.log('2️⃣ Updating Request with Shipping Info');
       const { error: updateError } = await this.supabase
         .from('requests')
         .update({
-          status: 'shipped',
           tracking_number: shippingInfo.trackingNumber,
           carrier: shippingInfo.carrier,
           shipping_date: shippingInfo.shippingDate || new Date().toISOString(),
+          status: 'shipped',
           updated_at: new Date().toISOString()
         })
-        .eq('id', requestId)
-        .eq('status', 'fulfilled'); // Extra safety check
+        .eq('id', requestId);
 
-      if (updateError) throw updateError;
-
-      // 3. Verify update
-      const { data: verifiedData, error: verifyError } = await this.supabase
-        .from('requests')
-        .select('status, tracking_number, carrier, shipping_date')
-        .eq('id', requestId)
-        .single();
-
-      if (verifyError || !verifiedData || verifiedData.status !== 'shipped') {
-        throw new Error('Shipping update verification failed');
+      if (updateError) {
+        console.error('3️⃣ Shipping Update Failed:', updateError);
+        throw updateError;
       }
-
-      // After successful update
-      await this.supabase
-        .channel('request_updates')
-        .send({
-          type: 'broadcast',
-          event: 'REQUEST_UPDATE',
-          payload: verifiedData
-        });
-
-      console.log('✅ Shipping update completed successfully');
-      return verifiedData;
-
+      
+      console.log('4️⃣ Shipping Update Successful');
     } catch (error) {
-      console.error('❌ Shipping update failed:', error);
+      console.error('❌ Shipping Update Error:', error);
       throw error;
     } finally {
       console.groupEnd();

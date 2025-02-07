@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PDFPreview } from '@/app/components/invoice/PDFPreview'
+import { PDFPreview } from '@/app/components/common/invoice/PDFPreview'
 import { Invoice } from '@/app/components/types/invoice'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'

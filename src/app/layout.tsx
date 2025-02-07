@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import ClientLayout from './components/ClientLayout'
-import { ErrorBoundary } from '@/app/components/error/ErrorBoundary'
+import ClientLayout from './components/common/ClientLayout'
+import { ErrorBoundary } from '@/app/components/common/error/ErrorBoundary'
 import { Suspense } from 'react'
-import { InvoiceSkeleton } from '@/app/components/loading/InvoiceSkeleton'
+import { InvoiceSkeleton } from '@/app/components/common/loading/InvoiceSkeleton'
 import { Toaster } from "@/app/components/ui/toaster"
 
 const inter = Inter({ subsets: ['latin'] })

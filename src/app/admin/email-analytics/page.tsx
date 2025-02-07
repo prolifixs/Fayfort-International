@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { EmailAnalyticsDashboard } from '@/app/components/email/EmailAnalyticsDashboard'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import LoadingSpinner from '@/app/components/LoadingSpinner'
+import LoadingSpinner from '@/app/components/common/LoadingSpinner'
 
 export default function EmailAnalyticsPage() {
   const [emailIds, setEmailIds] = useState<string[]>([])

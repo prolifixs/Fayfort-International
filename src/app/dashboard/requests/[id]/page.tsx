@@ -1,11 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { RequestDetailsModal } from '@/app/components/RequestDetailsModal'
+import { RequestDetailsModal } from '@/app/components/dashboard/RequestDetailsModal'
 import { Button } from '@/app/components/ui/button'
 import { ChevronLeft, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { DeleteConfirmationModal } from '@/app/components/DeleteConfirmationModal'
+import { DeleteConfirmationModal } from '@/app/components/common/DeleteConfirmationModal'
 import { useToast } from '@/hooks/useToast'
 import { useParams } from 'next/navigation'
 import { RequestDetails } from '@/app/components/dashboard/UserRequestsTable'

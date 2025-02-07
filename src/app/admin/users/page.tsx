@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
-import Pagination from '@/app/components/Pagination';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
+import Pagination from '@/app/components/admin/Pagination';
 import type { Database } from '@/app/components/types/database.types';
-import ProtectedRoute from '@/app/components/ProtectedRoute';
+import ProtectedRoute from '@/app/components/common/ProtectedRoute';
 import { toast } from 'react-hot-toast';
 import { supabaseAdmin } from '@/app/components/lib/supabase'
 

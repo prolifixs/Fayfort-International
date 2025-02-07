@@ -58,8 +58,9 @@ export interface Database {
           product_id: string
           quantity: number
           budget: number
-          status: 'pending' | 'approved' | 'rejected' | 'fulfilled'
-          resolution_status: 'pending' | 'notified' | 'resolved'
+          status: RequestStatus
+          resolution_status: ResolutionStatus
+          invoice_status: 'paid' | 'unpaid'
           notes: string | null
           created_at: string
           updated_at: string
@@ -243,7 +244,15 @@ export type NotificationType =
   | 'request_update'
   | 'email_sent'
 
-export type RequestStatus = 'pending' | 'notified' | 'resolved'
+export type RequestStatus = 
+  | 'pending' 
+  | 'approved' 
+  | 'fulfilled' 
+  | 'shipped'
+  | 'rejected'
+  | 'notified'
+  | 'resolved';
+
 export type ProductStatus = 'active' | 'inactive'
 
 export interface User extends TableRow<'users'> {
@@ -297,4 +306,18 @@ export type Product = ActiveProduct | InactiveProduct
 
 export type ProductWithRequests = BaseProduct & {
   requests: Request[]
+}
+
+export type ResolutionStatus = 'pending' | 'notified' | 'resolved';
+
+// Update RequestProcessor method signature
+export interface RequestProcessor {
+  updateRequestStatus: (requestId: string, status: RequestStatus | ResolutionStatus, type?: 'request' | 'resolution') => Promise<void>;
+}
+
+export interface DatabaseRequest extends TableRow<'requests'> {
+  status: RequestStatus;
+  resolution_status: ResolutionStatus;
+  invoice_status: 'paid' | 'unpaid';
+  notification_sent: boolean;
 }

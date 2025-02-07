@@ -5,6 +5,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Bell, X, FileText, CreditCard, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatDistanceToNow } from 'date-fns'
+import { useRouter } from 'next/navigation'
 
 interface DashboardNotification {
   id: string
@@ -21,6 +22,7 @@ export function DashboardNotifications() {
   const [isOpen, setIsOpen] = useState(false)
   const supabase = createClientComponentClient()
   const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
     console.log('DashboardNotifications - Initializing')
@@ -109,23 +111,28 @@ export function DashboardNotifications() {
 
   async function fetchNotifications() {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get total unread count
+      const { count: unreadCount } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('read_status', false);
+
+      setUnreadCount(unreadCount || 0);
+
+      // Get latest 5 notifications for preview
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(5);
 
-      if (error) throw error
-
-      setNotifications(data)
-      updateUnreadCount(data)
+      if (error) throw error;
+      setNotifications(data);
     } catch (error) {
-      console.error('Error fetching notifications:', error)
-      toast({
-        title: 'Error fetching notifications',
-        description: 'Please try again later',
-        variant: 'destructive'
-      })
+      console.error('Error fetching notifications:', error);
     }
   }
 
@@ -202,12 +209,22 @@ export function DashboardNotifications() {
     notifications: DashboardNotification[], 
     onMarkAsRead: (id: string) => void 
   }) {
+    const router = useRouter()
+
+    const handleNotificationClick = (notification: DashboardNotification) => {
+      if (notification.type === 'invoice_ready') {
+        router.push(`/dashboard/invoices/${notification.reference_id}`)
+      }
+      onMarkAsRead(notification.id)
+    }
+
     return (
       <div className="divide-y divide-gray-100">
         {notifications.map((notification) => (
           <div
             key={notification.id}
-            className={`p-4 hover:bg-gray-50/50 transition-colors ${
+            onClick={() => handleNotificationClick(notification)}
+            className={`p-4 hover:bg-gray-50/50 transition-colors cursor-pointer ${
               !notification.read_status ? `${getNotificationBgColor(notification.type)}` : ''
             }`}
           >
@@ -285,7 +302,17 @@ export function DashboardNotifications() {
               {notifications.length === 0 ? (
                 <EmptyState />
               ) : (
-                <NotificationsList notifications={notifications} onMarkAsRead={markAsRead} />
+                <>
+                  <NotificationsList notifications={notifications} onMarkAsRead={markAsRead} />
+                  <div className="p-4 border-t border-gray-100">
+                    <button
+                      onClick={() => router.push('/dashboard/notifications')}
+                      className="w-full text-center text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      View All Notifications
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>

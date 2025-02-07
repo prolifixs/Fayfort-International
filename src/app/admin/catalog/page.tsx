@@ -2,21 +2,21 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
-import Pagination from '@/app/components/Pagination';
-import Toast from '@/app/components/Toast';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
+import Pagination from '@/app/components/admin/Pagination';
+import Toast from '@/app/components/ui/status/Toast';
 import type { ActiveProduct, Database, InactiveProduct, TableRow } from '@/app/components/types/database.types';
-import { DeleteConfirmationModal } from '@/app/components/DeleteConfirmationModal';
-import { ProductTable } from '@/app/components/ProductTable/ProductTable';
-import { ProductForm, ProductFormData } from '@/app/components/ProductForm/ProductForm';
+import { DeleteConfirmationModal } from '@/app/components/common/DeleteConfirmationModal';
+import { ProductTable } from '@/app/components/admin/ProductTable/ProductTable';
+import { ProductForm, ProductFormData } from '@/app/components/admin/ProductForm/ProductForm';
 import { Dialog } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
 import { MediaService } from '@/services/MediaService';
 import { MediaUploadManager } from '@/services/MediaUploadManager';
-import { ProductTabs } from '@/app/components/ProductTable/ProductTabs';
+import { ProductTabs } from '@/app/components/admin/ProductTable/ProductTabs';
 import { notificationService } from '@/services/notificationService';
-import { ProductSort } from '@/app/components/ProductTable/ProductSort';
-import { SortConfig, SortField, SortOrder } from '@/app/components/ProductTable/types'
+import { ProductSort } from '@/app/components/admin/ProductTable/ProductSort';
+import { SortConfig, SortField, SortOrder } from '@/app/components/admin/ProductTable/types'
 import { InvoiceStatus } from '@/app/components/types/invoice'
 import { CatalogGuide } from '@/app/components/admin/CatalogGuide';
 
@@ -64,9 +64,12 @@ export default function CatalogManagement() {
         .from('products')
         .select(`
           *,
-          category:categories(*),
-          media:product_media(*),
-          requests:requests(*),
+          category:categories!products_category_id_fkey (*),
+          media:product_media!product_media_product_id_fkey (*),
+          requests:requests!requests_product_id_fkey (
+            *,
+            customer:users!requests_customer_id_fkey (*)
+          ),
           status
         `)
         .eq('status', activeTab);
@@ -435,9 +438,22 @@ export default function CatalogManagement() {
               ...p,
               requests: (p.requests || []).map(r => ({
                 ...r,
-                user: { id: r.customer_id, email: '', name: '', role: 'customer', status: 'active', last_login: null, created_at: '', updated_at: '' },
+                product: {
+                  id: p.id,
+                  name: p.name,
+                  status: p.status
+                },
+                customer: {
+                  id: r.customer_id,
+                  email: ''
+                },
+                notification_sent: false,
                 invoice_status: 'unpaid',
-                status: r.status
+                status: r.status,
+                resolution_status: 'pending',
+                created_at: r.created_at,
+                quantity: r.quantity,
+                budget: r.budget
               }))
             } as ActiveProduct))}
           inactiveProducts={products
@@ -446,10 +462,21 @@ export default function CatalogManagement() {
               ...p,
               requests: (p.requests || []).map(r => ({
                 ...r,
-                user: { id: r.customer_id, email: '', name: '', role: 'customer', status: 'active', last_login: null, created_at: '', updated_at: '' },
+                product: {
+                  id: p.id,
+                  name: p.name,
+                  status: p.status
+                },
+                customer: {
+                  id: r.customer_id,
+                  email: ''
+                },
                 invoice_status: 'pending' as InvoiceStatus,
                 resolution_status: r.resolution_status || 'pending',
-                notification_sent: false
+                notification_sent: false,
+                created_at: r.created_at,
+                quantity: r.quantity,
+                budget: r.budget
               }))
             } as InactiveProduct))}
           onStatusChange={handleStatusChange}

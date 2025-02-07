@@ -1,4 +1,5 @@
 import { Database } from './database.types';
+import { InvoiceStatus } from './invoice';
 
 // Base request type from database
 export type BaseRequest = Database['public']['Tables']['requests']['Row'];
@@ -12,6 +13,7 @@ export interface RequestWithRelations {
   budget: number;
   invoice?: {
     amount: number;
+    status: InvoiceStatus;
   };
   product: {
     id: string;

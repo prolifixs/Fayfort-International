@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
