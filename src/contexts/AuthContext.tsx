@@ -11,8 +11,8 @@ import { supabaseAdmin } from '@/app/components/lib/supabase';
 
 
 interface AuthContextType {
-  user: any;
-  session: any;
+  user: User | null;
+  session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{
     user: User;
@@ -28,13 +28,18 @@ interface AuthContextType {
   resendVerificationEmail: (email: string) => Promise<void>;
   verifyEmail: (token: string, email: string) => Promise<void>;
   refreshSession: () => Promise<void>;
+  isLoading: boolean;
+  adminMethods: {
+    updateUserRole: (userId: string, role: string) => Promise<void>;
+    deleteUser: (userId: string) => Promise<void>;
+  };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null);
-  const [session, setSession] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -133,7 +138,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        debugAuth('Auth state changed', { event, session });
+        debugAuth('Auth state changed', { 
+          event, 
+          session,
+          userRole: session?.user?.user_metadata?.role,
+          userId: session?.user?.id 
+        });
         if (event === 'SIGNED_IN') {
           setSession(session);
           setUser(session?.user ?? null);
@@ -207,7 +217,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (error) throw error;
       },
-      refreshSession
+      refreshSession,
+      isLoading: loading,
+      adminMethods
     }),
     [user, session, loading, router]
   );

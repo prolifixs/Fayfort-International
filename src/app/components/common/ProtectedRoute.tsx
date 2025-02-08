@@ -31,7 +31,13 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
         console.log('Role comparison:', roles);
 
         // Use auth metadata role for authorization
-        const userRole = session.user.user_metadata?.role;
+        const userRole = session.user.user_metadata?.role || await fallbackToDbRole(session.user.id);
+        console.log('🔒 ProtectedRoute Role Check:', {
+          userRole,
+          allowedRoles,
+          isAllowed: allowedRoles.includes(userRole),
+          path: window.location.pathname
+        });
         
         if (!allowedRoles.includes(userRole)) {
           console.log('❌ ProtectedRoute: Unauthorized role:', userRole);
@@ -76,6 +82,15 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
         authRole: authUser?.user?.user_metadata?.role,
         dbRole: dbUser?.role
       };
+    }
+
+    async function fallbackToDbRole(userId: string) {
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      return dbUser?.role;
     }
 
     checkAuth();

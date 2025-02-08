@@ -31,13 +31,14 @@ export function MediaGallery({ media }: MediaGalleryProps) {
       <div className="relative aspect-square w-full">
         <button
           onClick={() => setIsLightboxOpen(true)}
-          className="w-full h-full"
+          className="w-full h-full relative"
         >
           {selectedMedia.media_type === 'image' ? (
             <Image
               src={selectedMedia.url}
               alt=""
               fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover rounded-lg"
               priority
             />
@@ -60,7 +61,8 @@ export function MediaGallery({ media }: MediaGalleryProps) {
                 e.stopPropagation()
                 handlePrev()
               }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 z-10"
+              aria-label="Previous image"
             >
               ←
             </button>
@@ -69,7 +71,8 @@ export function MediaGallery({ media }: MediaGalleryProps) {
                 e.stopPropagation()
                 handleNext()
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 z-10"
+              aria-label="Next image"
             >
               →
             </button>
@@ -93,6 +96,7 @@ export function MediaGallery({ media }: MediaGalleryProps) {
                   src={item.url}
                   alt=""
                   fill
+                  sizes="(max-width: 768px) 16vw, 8vw"
                   className="object-cover rounded"
                 />
               ) : (
@@ -113,14 +117,16 @@ export function MediaGallery({ media }: MediaGalleryProps) {
       >
         <div className="fixed inset-0 bg-black/90" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-4xl">
+          <Dialog.Panel className="w-full max-w-4xl relative p-4">
             {selectedMedia.media_type === 'image' ? (
-              <div className="relative aspect-video">
+              <div className="relative w-full h-[60vh]">
                 <Image
                   src={selectedMedia.url}
                   alt=""
                   fill
-                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 80vw"
+                  className="object-contain rounded-lg"
+                  priority
                 />
               </div>
             ) : (

@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import type { Database, TableRow } from '@/app/components/types/database.types';
 import { ProductCard } from '@/app/components/common/ProductCard/ProductCard';
 import { useRouter } from 'next/navigation';
+import { Search } from 'lucide-react';
 
 type ProductMedia = TableRow<'product_media'>;
 
@@ -59,6 +60,26 @@ export default function CatalogPage() {
     fetchProducts();
   }, []);
 
+  // Add this after the existing useEffect for products
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .order('name');
+        
+        if (error) throw error;
+        setCategories(data || []);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        toast.error('Failed to load categories');
+      }
+    };
+
+    fetchCategories();
+  }, [supabase]);
+
   const fetchProducts = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -107,31 +128,49 @@ export default function CatalogPage() {
     currentPage * productsPerPage
   );
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Keep existing filtering logic
+  }
+
   return (
     <ProtectedRoute allowedRoles={['customer', 'admin', 'supplier']}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header and Filters */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Product Catalog</h1>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="p-2 border rounded-lg w-full"
-            />
+          
+          {/* Search and Filter Form */}
+          <form onSubmit={handleSearch} className="space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products..."
+                className="w-full px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Category Filter - Styled to match */}
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="p-2 border rounded-lg w-full"
+              className="w-full px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
               <option value="all">All Categories</option>
               {categories.map(category => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
             </select>
-          </div>
+          </form>
         </div>
 
         {/* Product Grid */}

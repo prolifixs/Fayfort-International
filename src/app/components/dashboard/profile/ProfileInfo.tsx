@@ -8,6 +8,7 @@ import { SocialMediaLinks } from './SocialMediaLinks'
 import { AddressCard } from './AddressCard'
 import { motion } from 'framer-motion'
 import { MapPin, Share2 } from 'lucide-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 interface ProfileInfoProps {
   user: {
@@ -78,10 +79,14 @@ export function ProfileInfo({ user }: ProfileInfoProps) {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-gray-900">Profile Information</h2>
             <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+              onClick={async () => {
+                const supabase = createClientComponentClient()
+                await supabase.auth.signOut()
+                window.location.href = '/'
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
             >
-              {isEditing ? 'Cancel' : 'Edit Profile'}
+              Logout
             </button>
           </div>
 

@@ -109,8 +109,8 @@ export default function DashboardPage() {
           {/* Main Content */}
           <div className="space-y-6">
             {/* Activity and Request Flow */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-1">
                 <div className="bg-white shadow rounded-lg p-6">
                   <h2 className="text-lg font-medium text-gray-900 mb-4">Exchange Rates</h2>
                   <div className="max-h-[300px] overflow-y-auto pr-2">
@@ -119,7 +119,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="lg:col-span-1">
+              <div className="md:col-span-1">
                 {selectedRequestId ? (
                   <RequestFlow requestId={selectedRequestId} />
                 ) : (

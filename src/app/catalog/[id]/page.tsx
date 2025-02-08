@@ -136,13 +136,14 @@ export default function ProductDetailPage() {
         ) : (
           <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
             {/* Media Gallery Section */}
-            <div className="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden">
+            <div className="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden relative">
               {(product.media ?? []).length > 0 ? (
                 <MediaGallery media={product.media ?? []} />
               ) : (
                 <img
                   src={product.image_url || '/placeholder.jpg'}
                   alt={product.name}
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="w-full h-full object-center object-cover"
                   onError={(e) => {
                     e.currentTarget.src = '/placeholder.jpg';

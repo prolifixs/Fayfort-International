@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, memo } from 'react'
-import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Menu } from 'lucide-react'
+import { MobileMenu } from './MobileMenu/MobileMenu'
 import type { NavSection } from '../types/navigation.types'
 
 type UserRole = 'admin' | 'customer' | 'supplier'
@@ -47,7 +49,7 @@ const navigation: NavSection[] = [
       {
         label: 'Requests',
         path: '/request',
-        roles: ['admin', 'customer', 'supplier']
+        roles: ['admin', 'supplier']
       }
     ]
   }
@@ -61,11 +63,34 @@ const Navigation = memo(function Navigation({ userRole = 'customer' }: Navigatio
     return pathname === path || pathname.startsWith(`${path}/`)
   }
 
+  const mobileMenuContent = (
+    <div className="flex flex-col space-y-2">
+      {navigation.map((section) =>
+        section.items
+          .filter(item => item.roles.includes(userRole))
+          .map((item, index) => (
+            <Link
+              key={index}
+              href={item.path}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`px-4 py-3 rounded-lg transition-colors ${
+                isActiveLink(item.path)
+                  ? 'bg-blue-500/10 text-blue-600 font-medium'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))
+      )}
+    </div>
+  )
+
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50 h-16">
       <div className="container mx-auto px-4 h-full flex items-center justify-between">
         <Link href="/" className="text-xl font-bold">
-          Fayfort Enterprise
+          Fayfort International
         </Link>
 
         {/* Desktop Navigation */}
@@ -91,44 +116,19 @@ const Navigation = memo(function Navigation({ userRole = 'customer' }: Navigatio
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="md:hidden p-2 rounded-lg hover:bg-gray-100"
         >
-          <span className="sr-only">Open menu</span>
-          {isMobileMenuOpen ? (
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          )}
+          <Menu className="h-6 w-6 text-gray-600" />
         </button>
 
         {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="absolute top-16 left-0 right-0 bg-white shadow-lg md:hidden">
-            {navigation.map((section) =>
-              section.items
-                .filter(item => item.roles.includes(userRole))
-                .map((item, index) => (
-                  <Link
-                    key={index}
-                    href={item.path}
-                    className={`block px-4 py-2 ${
-                      isActiveLink(item.path)
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                ))
-            )}
-          </div>
-        )}
+        <MobileMenu
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        >
+          {mobileMenuContent}
+        </MobileMenu>
       </div>
     </nav>
   )
