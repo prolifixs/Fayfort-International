@@ -4,7 +4,7 @@
 
 ### 1. Environment Variables
 ```env
-NEXT_PUBLIC_RESEND_API_KEY=your_resend_api_key
+RESEND_API_KEY=your_resend_api_key
 NEXT_PUBLIC_APP_URL=your_app_url
 ```
 

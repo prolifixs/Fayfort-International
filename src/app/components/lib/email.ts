@@ -7,8 +7,6 @@ import { StatusChangeEmail } from '../email/templates/StatusChangeEmail'
 import { WelcomeEmail } from '../email/templates/WelcomeEmail'
 import { emailQueueService } from '@/services/emailQueueService'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function sendInvoiceEmail(invoice: Invoice) {
   const [pdfBuffer, emailHtml] = await Promise.all([
     generateInvoicePDF({
