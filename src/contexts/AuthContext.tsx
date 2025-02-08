@@ -127,9 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: session.user.user_metadata?.role 
           });
         }
+        setLoading(false);
       } catch (error) {
         debugAuth('Auth initialization error', error);
-      } finally {
         setLoading(false);
       }
     };
@@ -138,30 +138,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        debugAuth('Auth state changed', { 
-          event, 
-          session,
-          userRole: session?.user?.user_metadata?.role,
-          userId: session?.user?.id 
-        });
-        if (event === 'SIGNED_IN') {
-          setSession(session);
-          setUser(session?.user ?? null);
-          // Don't set loading to false immediately on sign in
-          // Let the redirect happen first
-          return;
-        }
+        debugAuth('Auth state changed', { event, session });
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
       }
     );
 
-    return () => {
-      debugAuth('Cleaning up auth subscription');
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   const value = useMemo(
     () => ({

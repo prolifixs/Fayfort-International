@@ -12,6 +12,7 @@ import { NewArrivals } from '@/app/components/catalog/NewArrivals'
 import { useRouter } from 'next/navigation'
 import { FayfayAIPreview } from '../components/dashboard/FayfayAIPreview'
 import { RequestTabs } from '../components/admin/RequestTabs'
+import { Bell, FileText, Bookmark } from 'lucide-react'
 
 type Product = Database['public']['Tables']['products']['Row']
 
@@ -102,7 +103,23 @@ export default function DashboardPage() {
               >
                 New Request
               </button>
-              <DashboardNotifications />
+              <div className="flex items-center space-x-2">
+                <button
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full"
+                  onClick={() => router.push('/dashboard/invoices')}
+                  title="Invoices"
+                >
+                  <FileText className="h-5 w-5" />
+                </button>
+                <button
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full"
+                  onClick={() => {/* Bookmark functionality */}}
+                  title="Bookmarks"
+                >
+                  <Bookmark className="h-5 w-5" />
+                </button>
+                <DashboardNotifications />
+              </div>
             </div>
           </div>
 

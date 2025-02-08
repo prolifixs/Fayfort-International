@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, memo } from 'react'
+import { useState, memo, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { MobileMenu } from './MobileMenu/MobileMenu'
 import type { NavSection } from '../types/navigation.types'
@@ -57,7 +57,16 @@ const navigation: NavSection[] = [
 
 const Navigation = memo(function Navigation({ userRole = 'customer' }: NavigationProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    // Prefetch common routes
+    router.prefetch('/dashboard')
+    router.prefetch('/profile')
+    router.prefetch('/catalog')
+    // Add other frequently accessed routes
+  }, [router])
 
   const isActiveLink = (path: string) => {
     return pathname === path || pathname.startsWith(`${path}/`)

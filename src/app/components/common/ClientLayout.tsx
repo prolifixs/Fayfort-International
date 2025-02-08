@@ -1,18 +1,44 @@
 'use client';
 
 import { AuthProvider } from '@/contexts/AuthContext';
+import { LoadingProvider } from '@/contexts/LoadingContext';
 import { Toaster } from 'react-hot-toast';
 import Navigation from './Navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLoading } from '@/contexts/LoadingContext';
 import LoadingSpinner from './LoadingSpinner';
+import { useEffect } from 'react';
+import { useLoadingSafety } from '@/app/hooks/useLoadingSafety';
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const { startLoading, endLoading } = useLoading();
+  const isStuck = useLoadingSafety(5000, isLoading);
   const userRole = user?.user_metadata?.role;
-  console.log('🎨 ClientLayout Render:', { userRole, isLoading, userId: user?.id });
 
-  if (isLoading) {
+  useEffect(() => {
+    if (isLoading) {
+      startLoading('auth');
+    } else {
+      endLoading('auth');
+    }
+  }, [isLoading, startLoading, endLoading]);
+
+  if (isLoading && !isStuck) {
     return <LoadingSpinner />;
+  }
+
+  if (isStuck) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          Retry Loading
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -28,8 +54,10 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <Layout>{children}</Layout>
-    </AuthProvider>
+    <LoadingProvider>
+      <AuthProvider>
+        <Layout>{children}</Layout>
+      </AuthProvider>
+    </LoadingProvider>
   );
 }
