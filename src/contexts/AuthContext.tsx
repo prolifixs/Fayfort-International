@@ -5,6 +5,9 @@ import { Session, User } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import { WeakPassword } from '@supabase/supabase-js';
 import { supabase, getRedirectUrl } from '@/app/components/lib/supabase';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { toast } from 'react-hot-toast';
+import { supabaseAdmin } from '@/app/components/lib/supabase';
 
 
 interface AuthContextType {
@@ -19,8 +22,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, role: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  signInWithFacebook: () => Promise<void>;
+  signInWithGoogle: (options?: { role?: string, isRegistration?: boolean }) => Promise<void>;
+  signInWithFacebook: (options?: { role?: string, isRegistration?: boolean }) => Promise<void>;
   isEmailVerified: boolean;
   resendVerificationEmail: (email: string) => Promise<void>;
   verifyEmail: (token: string, email: string) => Promise<void>;
@@ -33,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Add debug logging
@@ -85,6 +89,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userError) {
       console.error('Error getting user:', userError);
       return;
+    }
+  };
+
+  const adminMethods = {
+    updateUserRole: async (userId: string, role: string) => {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(
+        userId,
+        { user_metadata: { role } }
+      );
+      if (error) throw error;
+    },
+    
+    deleteUser: async (userId: string) => {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (error) throw error;
     }
   };
 
@@ -146,17 +165,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
       },
-      signInWithGoogle: async () => {
+      signInWithGoogle: async (options?: { role?: string, isRegistration?: boolean }) => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
-          options: { redirectTo: getRedirectUrl() }
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+            queryParams: {
+              ...(options?.role && { role: options.role }),
+              ...(options?.isRegistration && { registration: 'true' })
+            }
+          }
         });
         if (error) throw error;
       },
-      signInWithFacebook: async () => {
+      signInWithFacebook: async (options?: { role?: string, isRegistration?: boolean }) => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'facebook',
-          options: { redirectTo: getRedirectUrl() }
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+            queryParams: {
+              ...(options?.role && { role: options.role }),
+              ...(options?.isRegistration && { registration: 'true' })
+            }
+          }
         });
         if (error) throw error;
       },

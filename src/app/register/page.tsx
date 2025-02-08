@@ -151,18 +151,25 @@ export default function RegisterPage() {
 
     try {
       if (provider === 'google') {
-        await signInWithGoogle()
+        await signInWithGoogle({ 
+          role: formData.role,
+          isRegistration: true 
+        })
       } else {
-        await signInWithFacebook()
+        await signInWithFacebook({ 
+          role: formData.role,
+          isRegistration: true 
+        })
       }
-      // Social login redirects automatically through Supabase
+      toast.success(`Redirecting to ${provider} login...`)
     } catch (err) {
       console.error('Social login error:', err)
       setError(err instanceof Error ? err.message : 'Failed to login')
+      toast.error(`${provider} login failed`)
     } finally {
       setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">

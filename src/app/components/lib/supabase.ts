@@ -27,16 +27,35 @@ if (!serviceRoleKey) {
   throw new Error('Missing Supabase Service Role Key')
 }
 
-export const supabaseAdmin = createClient<Database>(
+// Debug logging for admin operations
+const debugAdmin = (operation: string, details?: any) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔑 Admin Operation: ${operation}`, details || '');
+  }
+};
+
+export const supabaseAdmin = new Proxy(createClient<Database>(
   supabaseUrl,
   serviceRoleKey,
   {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
+      persistSession: false,
+      debug: process.env.NODE_ENV === 'development'
     }
   }
-)
+), {
+  get(target: any, prop: string | symbol) {
+    const value = (target as any)[prop];
+    if (typeof value === 'function') {
+      return (...args: any[]) => {
+        debugAdmin(`Calling ${String(prop)}`, { args });
+        return value.apply(target, args);
+      };
+    }
+    return value;
+  }
+});
 
 // Social auth configuration
 export const socialAuthProviders = {

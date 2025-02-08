@@ -11,6 +11,7 @@ import { RequestStatus, RequestWithRelations, SortField } from '../components/ty
 import RequestFilters from '@/app/components/admin/RequestFilters';
 import { RequestGuide } from '@/app/components/dashboard/request/RequestGuide';
 import { statusService } from '@/services/statusService';
+import RoleBasedNavItem from '@/app/components/common/RoleBasedNavItem';
 
 type SortOrder = 'asc' | 'desc';
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
@@ -183,6 +184,9 @@ export default function RequestPage() {
         )}
       </div>
       <RequestGuide />
+      <RoleBasedNavItem href="/request" allowedRoles={['admin', 'supplier']}>
+        <span>Requests</span>
+      </RoleBasedNavItem>
     </ProtectedRoute>
   );
 }

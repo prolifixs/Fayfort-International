@@ -59,9 +59,9 @@ export async function middleware(req: NextRequest) {
 
     // Handle admin routes
     if (req.nextUrl.pathname.startsWith('/admin')) {
-      const userRole = session.user.user_metadata?.role
+      const userRole = session?.user?.user_metadata?.role;
       if (userRole !== 'admin') {
-        return NextResponse.redirect(new URL('/unauthorized', req.url))
+        return NextResponse.redirect(new URL('/dashboard', req.url));
       }
     }
 
