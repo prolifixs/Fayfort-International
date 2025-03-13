@@ -33,6 +33,8 @@ interface AuthContextType {
     updateUserRole: (userId: string, role: string) => Promise<void>;
     deleteUser: (userId: string) => Promise<void>;
   };
+  isNewUser: boolean;
+  markUserVisited: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const [isNewUser, setIsNewUser] = useState<boolean>(true);
 
   // Add debug logging
   const debugAuth = (message: string, data?: any) => {
@@ -112,6 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const markUserVisited = () => {
+    if (!user) return;
+    const visitKey = `hasVisited_${user.id}`;
+    localStorage.setItem(visitKey, 'true');
+    setIsNewUser(false);
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       debugAuth('Initializing auth');
@@ -122,9 +132,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) {
           setSession(session);
           setUser(session.user);
+          
+          // Check if user has visited before
+          const visitKey = `hasVisited_${session.user.id}`;
+          const hasVisited = localStorage.getItem(visitKey);
+          setIsNewUser(!hasVisited);
+
           debugAuth('Session exists, user set', { 
             user: session.user,
-            role: session.user.user_metadata?.role 
+            role: session.user.user_metadata?.role,
+            isNewUser: !hasVisited
           });
         }
         setLoading(false);
@@ -141,6 +158,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         debugAuth('Auth state changed', { event, session });
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Check first visit status on auth state change
+        if (session?.user) {
+          const visitKey = `hasVisited_${session.user.id}`;
+          const hasVisited = localStorage.getItem(visitKey);
+          setIsNewUser(!hasVisited);
+        }
       }
     );
 
@@ -166,7 +190,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             redirectTo: `${window.location.origin}/auth/callback`,
             queryParams: {
               ...(options?.role && { role: options.role }),
-              ...(options?.isRegistration && { registration: 'true' })
+              ...(options?.isRegistration && { registration: 'true' }),
+              isNewUser: 'true'
             }
           }
         });
@@ -179,7 +204,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             redirectTo: `${window.location.origin}/auth/callback`,
             queryParams: {
               ...(options?.role && { role: options.role }),
-              ...(options?.isRegistration && { registration: 'true' })
+              ...(options?.isRegistration && { registration: 'true' }),
+              isNewUser: 'true'
             }
           }
         });
@@ -203,9 +229,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       refreshSession,
       isLoading: loading,
-      adminMethods
+      adminMethods,
+      isNewUser,
+      markUserVisited
     }),
-    [user, session, loading, router]
+    [user, session, loading, router, isNewUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

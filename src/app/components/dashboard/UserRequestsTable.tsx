@@ -23,9 +23,9 @@ import {
 } from "@/app/components/ui/dialog"
 import { toast } from 'react-hot-toast'
 import { NotificationService } from '@/services/notificationService'
+import { RequestListItem } from './RequestListItem'
 
-
-interface UserRequest {
+export interface UserRequest {
   id: string
   product_id: string
   customer_id: string
@@ -114,7 +114,75 @@ type Invoice = {
   due_date?: string
 }
 
+interface ValidCustomer {
+  id: string;
+  email: string;
+}
 
+function isValidCustomer(customer: any): customer is ValidCustomer {
+  return (
+    customer &&
+    typeof customer.id === 'string' && 
+    customer.id.length > 0 &&
+    typeof customer.email === 'string' &&
+    customer.email.includes('@')
+  );
+}
+
+function transformCustomerData(customer: any): ValidCustomer | null {
+  // Early return for null/undefined
+  if (!customer) {
+    console.warn('Customer data is null or undefined');
+    return null;
+  }
+
+  // Handle array case
+  if (Array.isArray(customer)) {
+    const firstCustomer = customer[0];
+    if (isValidCustomer(firstCustomer)) {
+      return firstCustomer;
+    }
+    console.warn('Invalid customer data in array:', firstCustomer);
+    return null;
+  }
+
+  // Handle object case
+  if (typeof customer === 'object') {
+    if (isValidCustomer(customer)) {
+      return customer;
+    }
+    console.warn('Invalid customer object:', customer);
+    return null;
+  }
+
+  console.warn('Unexpected customer data type:', typeof customer);
+  return null;
+}
+
+const transformProduct = (productData: any) => {
+  if (!productData) return {
+    id: '',
+    name: 'Unknown',
+    status: 'inactive'
+  };
+
+  // Handle array case from foreign key relationship
+  if (Array.isArray(productData)) {
+    const firstProduct = productData[0];
+    return {
+      id: firstProduct?.id || '',
+      name: firstProduct?.name || 'Unknown',
+      status: firstProduct?.status || 'inactive'
+    };
+  }
+
+  // Handle direct object case
+  return {
+    id: productData.id || '',
+    name: productData.name || 'Unknown',
+    status: productData.status || 'inactive'
+  };
+};
 
 export function UserRequestsTable() {
   const router = useRouter()
@@ -134,56 +202,87 @@ export function UserRequestsTable() {
 
   async function fetchUserRequests() {
     try {
-      setLoading(true)
-      setError(null)
-      const { data: { user } } = await supabase.auth.getUser()
+      setLoading(true);
+      setError(null);
       
+      // Get authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setError('User not authenticated')
-        return
+        setError('User not authenticated');
+        return;
       }
 
+      // Verify user has required data
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('id', user.id)
+        .single();
+
+      if (userError || !isValidCustomer(userData)) {
+        setError('Invalid user profile data');
+        return;
+      }
+
+      // Fetch requests with validated customer data
       const { data, error } = await supabase
-      .from('requests')
-      .select(`
-        id,
-        product_id,
-        customer_id,
-        status,
-        resolution_status,
-        created_at,
-        quantity,
-        budget,
-        notification_sent,
-        notification_type,
-        last_notification_date,
-        product:products!requests_product_id_fkey (
+        .from('requests')
+        .select(`
           id,
-          name,
-          status
-        ),
-        customer:users!requests_customer_id_fkey (
-          id,
-          email
-        )
-      `)
-      .eq('customer_id', user.id)
-      .order(sort.field, { ascending: sort.direction === 'asc' })
+          product_id,
+          customer_id,
+          status,
+          resolution_status,
+          created_at,
+          quantity,
+          budget,
+          notification_sent,
+          notification_type,
+          last_notification_date,
+          product:products!requests_product_id_fkey (
+            id,
+            name,
+            status
+          ),
+          customer:users!requests_customer_id_fkey (
+            id,
+            email
+          )
+        `)
+        .eq('customer_id', user.id)
+        .order(sort.field, { ascending: sort.direction === 'asc' });
 
-      console.log('Raw data:', data)
+      if (error) throw error;
 
-      if (error) throw error
-      setRequests(data?.map(item => ({
-        ...item,
-        resolution_status: item.resolution_status || 'pending',
-        product: Array.isArray(item.product) ? item.product[0] : item.product,
-        customer: Array.isArray(item.customer) ? item.customer[0] : item.customer
-      })) || [])
+      const transformedRequests = (data?.map(item => {
+        const transformedCustomer = transformCustomerData(item.customer);
+        
+        if (!transformedCustomer) {
+          console.error('Invalid customer data for request:', item.id);
+          return null;
+        }
+
+        return {
+          ...item,
+          product: transformProduct(item.product),
+          customer: transformedCustomer,
+          status: item.status as AllStatus,
+          resolution_status: item.resolution_status || undefined,
+          created_at: item.created_at,
+          quantity: item.quantity,
+          budget: item.budget,
+          notification_sent: item.notification_sent,
+          notification_type: item.notification_type,
+          last_notification_date: item.last_notification_date
+        } as UserRequest;
+      }).filter(Boolean) as UserRequest[]) || [];
+
+      setRequests(transformedRequests);
     } catch (err) {
-      console.error('Error:', err)
-      setError('Failed to fetch requests')
+      console.error('Error:', err);
+      setError('Failed to fetch requests');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -312,20 +411,17 @@ export function UserRequestsTable() {
       // Handle pending requests
       const productStatus = data.product?.[0]?.status || 'inactive';
       
-
-      if (data.status !== 'pending' && productStatus === 'active') {
-        toast({
-          title: "Error",
-          description: 'Only pending requests can be deleted for active products',
-          variant: "destructive",
-        });
+      if (data.status === 'pending' || productStatus === 'inactive') {
+        setRequestToDelete(requestId);
+        setShowDeleteModal(true);
         return;
       }
 
-      // Show delete confirmation dialog
-      setRequestToDelete(requestId);
-      setShowDeleteModal(true);
-
+      toast({
+        title: "Error",
+        description: 'Only pending requests can be deleted',
+        variant: "destructive",
+      });
     } catch (error) {
       console.error('Delete check error:', error);
       toast({
@@ -400,7 +496,8 @@ export function UserRequestsTable() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop view */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -491,37 +588,58 @@ export function UserRequestsTable() {
                   ))}
                 </tbody>
               </table>
-
-              {requests.length === 0 && !loading && (
-                <div className="px-6 py-4">
-                  <EmptyStateCard onCreateRequest={handleCreateRequest} />
-                </div>
-              )}
-
-              {totalPages > 1 && (
-                <div className="px-6 py-3 flex items-center justify-between border-t border-gray-200">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-gray-700">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
             </div>
+
+            {/* Mobile view */}
+            <div className="md:hidden">
+              {paginatedRequests.map((request) => (
+                <RequestListItem
+                  key={request.id}
+                  request={request}
+                  onView={(id) => setSelectedRequestId(id)}
+                  onDelete={handleDeleteClick}
+                  canDelete={canDeleteRequest(request)}
+                />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-4 py-3 border-t border-gray-200 flex justify-between items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-500">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+
+            {requests.length === 0 && !loading && (
+              <div className="text-center py-12">
+                <h3 className="mt-2 text-lg font-medium text-gray-900">No requests found</h3>
+                <p className="mt-1 text-sm text-gray-500">Get started by creating a new request.</p>
+                <div className="mt-6">
+                  <Button onClick={handleCreateRequest}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create New Request
+                  </Button>
+                </div>
+              </div>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -604,13 +722,17 @@ export function UserRequestsTable() {
             try {
               console.log('Starting shipped request archival process:', requestId);
 
-              // 1. Get request data
+              // 1. Get request data with explicit relationship
               const { data: requestData, error: requestError } = await supabase
                 .from('requests')
                 .select(`
                   *,
                   invoice:invoices(*),
-                  product:products(name)
+                  product:products!requests_product_id_fkey(
+                    id,
+                    name,
+                    status
+                  )
                 `)
                 .eq('id', requestId)
                 .single();
@@ -626,7 +748,7 @@ export function UserRequestsTable() {
                 'shipped',
                 {
                   previousStatus: requestData.status,
-                  productName: requestData.product?.name
+                  productName: requestData.product?.name || 'Unknown Product'
                 }
               );
 
@@ -647,10 +769,12 @@ export function UserRequestsTable() {
 
               if (archiveError) throw archiveError;
 
-              // 4. Delete related records last
+              // 4. Delete related records in sequence
               await supabase.from('status_history').delete().eq('request_id', requestId);
               await supabase.from('invoices').delete().eq('request_id', requestId);
-              await supabase.from('requests').delete().eq('id', requestId);
+              const { error: deleteError } = await supabase.from('requests').delete().eq('id', requestId);
+
+              if (deleteError) throw deleteError;
 
               handleDeleteSuccess(requestId);
               console.log('Shipped request archived and deleted successfully:', requestId);
@@ -665,6 +789,7 @@ export function UserRequestsTable() {
               setShowShippedDeleteModal(false);
               setRequestToDelete(null);
             }
+
           }}
           requestId={requestToDelete}
         />
@@ -820,8 +945,22 @@ export function RequestDetails({ requestId }: { requestId: string }) {
         <PaymentDialog 
           isOpen={isPaymentOpen}
           onClose={() => setIsPaymentOpen(false)}
-          amount={details.invoice.amount}
-          invoiceId={details.invoice.id}
+          invoice={{
+            id: details.invoice.id,
+            amount: details.invoice.amount,
+            status: details.invoice.status === 'pending' ? 'draft' : details.invoice.status as 'draft' | 'sent' | 'paid' | 'cancelled',
+            created_at: details.invoice.created_at ?? new Date().toISOString(),
+            due_date: details.invoice.due_date ?? new Date().toISOString(),
+            request_id: requestId,
+            user_id: details.customer_id,
+            updated_at: details.invoice.created_at ?? new Date().toISOString(),
+            status_updated_at: details.invoice.created_at ?? new Date().toISOString(),
+            invoice_items: []
+          }}
+          onPaymentSuccess={() => {
+            fetchDetails();
+            setIsPaymentOpen(false);
+          }}
         />
       </div>
     )
@@ -926,13 +1065,17 @@ function ShippedDeleteConfirmationModal({
     try {
       setIsDeleting(true);
       
-      // 1. Get request data
+      // 1. Get request data with explicit relationship
       const { data: requestData, error: requestError } = await supabase
         .from('requests')
         .select(`
           *,
           invoice:invoices(*),
-          product:products(name)
+          product:products!requests_product_id_fkey(
+            id,
+            name,
+            status
+          )
         `)
         .eq('id', requestId)
         .single();
@@ -948,7 +1091,7 @@ function ShippedDeleteConfirmationModal({
         'shipped',
         {
           previousStatus: requestData.status,
-          productName: requestData.product?.name
+          productName: requestData.product?.name || 'Unknown Product'
         }
       );
 
@@ -969,16 +1112,18 @@ function ShippedDeleteConfirmationModal({
 
       if (archiveError) throw archiveError;
 
-      // 4. Delete related records last
+      // 4. Delete related records in sequence
       await supabase.from('status_history').delete().eq('request_id', requestId);
       await supabase.from('invoices').delete().eq('request_id', requestId);
-      await supabase.from('requests').delete().eq('id', requestId);
+      const { error: deleteError } = await supabase.from('requests').delete().eq('id', requestId);
+
+      if (deleteError) throw deleteError;
 
       await onConfirm(requestId);
       
     } catch (error) {
       console.error('Error in shipped request deletion:', error);
-      toast.error('Failed to process shipped request deletion');
+      toast("Failed to process shipped request deletion");
     } finally {
       setIsDeleting(false);
       onClose();

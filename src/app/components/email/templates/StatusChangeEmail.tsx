@@ -1,52 +1,72 @@
 'use client'
 
-import { Text, Button, Section } from '@react-email/components'
-import { Invoice } from '@/app/components/types/invoice'
+import { Text } from '@react-email/components'
 import { BaseEmail } from './BaseEmail'
+import { Button, Alert, Section } from '../components'
 import { EmailStyles } from './styles/EmailStyles'
+import { RequestStatus } from '../../types/invoice'
 
 interface StatusChangeEmailProps {
-  invoice: Invoice
-  previousStatus: Invoice['status']
-  previewMode?: boolean
+  customerName: string
+  requestId: string
+  previousStatus: RequestStatus
+  newStatus: RequestStatus
+  message?: string
+  actionLink?: string
 }
 
-export function StatusChangeEmail({ invoice, previousStatus, previewMode = false }: StatusChangeEmailProps) {
-  const statusMessages = {
-    draft: 'has been saved as a draft',
-    sent: 'has been sent for payment',
-    paid: 'has been marked as paid',
-    cancelled: 'has been cancelled'
+export function StatusChangeEmail({
+  customerName,
+  requestId,
+  previousStatus,
+  newStatus,
+  message,
+  actionLink,
+}: StatusChangeEmailProps) {
+  const getStatusAlert = () => {
+    switch (newStatus) {
+      case 'approved':
+        return <Alert type="success">Your request has been approved!</Alert>
+      case 'rejected':
+        return <Alert type="error">Your request has been declined.</Alert>
+      default:
+        return <Alert type="warning">Your request status has been updated.</Alert>
+    }
   }
 
-  const previewText = `Invoice #${invoice.id} status changed to ${invoice.status}`
-
   return (
-    <BaseEmail previewText={previewText} title="Invoice Status Update">
+    <BaseEmail
+      previewText={`Request ${requestId} status updated to ${newStatus}`}
+      title="Request Status Update"
+    >
       <Text style={EmailStyles.text}>
-        Invoice #{invoice.id} {statusMessages[invoice.status]}.
+        Dear {customerName},
       </Text>
-      
-      <Section style={EmailStyles.detailsContainer}>
-        <Text style={EmailStyles.detailText}>
-          Previous Status: {previousStatus}
-          <br />
-          New Status: {invoice.status}
-          <br />
-          Amount: ${invoice.amount.toFixed(2)}
-          <br />
-          Due Date: {new Date(invoice.due_date).toLocaleDateString()}
+
+      <Section>
+        {getStatusAlert()}
+        
+        <Text style={EmailStyles.text}>
+          Your request ({requestId}) status has been changed from{' '}
+          <strong>{previousStatus}</strong> to <strong>{newStatus}</strong>.
         </Text>
+
+        {message && (
+          <Text style={EmailStyles.text}>
+            {message}
+          </Text>
+        )}
       </Section>
 
-      <Section style={EmailStyles.buttonContainer}>
-        <Button
-          style={EmailStyles.button}
-          href={previewMode ? '#' : `/invoices/${invoice.id}`}
-        >
-          View Invoice
+      {actionLink && (
+        <Button href={actionLink} variant="primary">
+          View Request Details
         </Button>
-      </Section>
+      )}
+
+      <Text style={EmailStyles.text}>
+        If you have any questions, please contact our support team.
+      </Text>
     </BaseEmail>
   )
 } 

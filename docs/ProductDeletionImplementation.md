@@ -21,13 +21,13 @@ ALTER TABLE requests ADD COLUMN resolution_status VARCHAR(20)
 
 ### 3.1 New Components
 - `/src/components/product/tabs/`
-  - ProductTabs.tsx
-  - ActiveProductsTab.tsx
-  - InactiveProductsTab.tsx
+   - ProductTabs.tsx
+   - ActiveProductsTab.tsx
+   - InactiveProductsTab.tsx
 
 - `/src/components/product/resolution/`
   - ResolutionView.tsx
-  - ResolutionTable.tsx
+   - ResolutionTable.tsx
   - ResolutionModal.tsx
 
 ### 3.2 Modified Components

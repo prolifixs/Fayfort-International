@@ -26,6 +26,15 @@ interface RequestsTableProps {
   onPageChange: (page: number) => void;
 }
 
+const DEBUG = true;
+const debugLog = (group: string, data: any) => {
+  if (DEBUG) {
+    console.group(`🔍 ${group}`);
+    console.log(data);
+    console.groupEnd();
+  }
+};
+
 export default function RequestsTable({ 
   requests: initialRequests, 
   onStatusUpdate,
@@ -43,8 +52,22 @@ export default function RequestsTable({
   const statusService = new StatusService();
 
   useEffect(() => {
-    setRequests(initialRequests)
-  }, [initialRequests])
+    console.group('🔄 RequestsTable - Data Flow');
+    console.log('1. Initial Requests:', initialRequests);
+    
+    const transformedRequests = initialRequests.map(request => {
+      console.log('2. Processing Request:', {
+        id: request.id,
+        hasCustomer: Boolean(request.customer),
+        hasProduct: Boolean(request.product)
+      });
+      
+      return request;
+    });
+    
+    setRequests(transformedRequests);
+    console.groupEnd();
+  }, [initialRequests]);
 
   useEffect(() => {
     const unsubscribeStatus = websocketService.subscribeToStatus(setConnectionStatus);
@@ -65,20 +88,43 @@ export default function RequestsTable({
   }, []);
 
   const handleStatusUpdateRequest = async (requestId: string, newStatus: RequestStatus) => {
+    debugLog('Status Update Started', {
+      requestId,
+      newStatus,
+      isAdminTriggered: true, // This is from dropdown
+      timestamp: new Date().toISOString()
+    });
+
     try {
       setIsUpdating(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Get the current request data to track status change
+      // Get the current request with ALL related data
       const { data: currentRequest } = await supabase
         .from('requests')
-        .select('status, product:products!inner(name)')
+        .select(`
+          id,
+          status,
+          product:products!inner(name),
+          customer_id,
+          customer:users!inner(id, email, name),
+          invoice:invoices(*)
+        `)
         .eq('id', requestId)
         .single();
 
-      // Update the status
-      const { error } = await supabase
+      debugLog('Full Request Context', {
+        currentStatus: currentRequest?.status,
+        newStatus,
+        hasInvoice: Boolean(currentRequest?.invoice?.[0]),
+        invoiceStatus: currentRequest?.invoice?.[0]?.status,
+        productName: currentRequest?.product[0]?.name,
+        hasCustomerEmail: Boolean(currentRequest?.customer?.[0]?.email)
+      });
+
+      // Update status
+      const { error: updateError } = await supabase
         .from('requests')
         .update({ 
           status: newStatus,
@@ -86,26 +132,66 @@ export default function RequestsTable({
         })
         .eq('id', requestId);
 
-      if (error) throw error;
-
-      // Use notification service for status change
-      const notificationService = new NotificationService();
-      await notificationService.sendStatusUpdateNotification(
-        requestId,
-        newStatus,
-        {
+      if (!updateError) {
+        // Status-specific logic
+        debugLog('Status-Specific Flow', {
+          status: newStatus,
           previousStatus: currentRequest?.status,
-          productName: currentRequest?.product?.[0]?.name,
-          userId: user.id
-        }
-      );
-      
+          requiresInvoice: ['approved', 'fulfilled'].includes(newStatus),
+          hasExistingInvoice: Boolean(currentRequest?.invoice?.[0]),
+          invoiceStatus: currentRequest?.invoice?.[0]?.status,
+          isStatusChange: currentRequest?.status !== newStatus
+        });
+
+        const notificationService = new NotificationService();
+        
+        // Send both notification and email for all status changes
+        await Promise.all([
+          // Always send status notification
+          notificationService.createNotification({
+            type: 'status_change',
+            content: `Request status updated to ${newStatus}`,
+            reference_id: requestId,
+            reference_type: 'request',
+            metadata: {
+              previousStatus: currentRequest?.status,
+              newStatus,
+              productName: currentRequest?.product[0]?.name,
+              isAdminTriggered: true
+            }
+          }).catch(error => {
+            debugLog('Notification Creation Failed', { error });
+          }),
+
+          // Always try to send email
+          notificationService.sendStatusUpdateNotification(
+            requestId,
+            newStatus,
+            {
+              previousStatus: currentRequest?.status,
+              productName: currentRequest?.product[0]?.name
+            }
+          ).catch(error => {
+            debugLog('Email Sending Failed', { error });
+          })
+        ]);
+
+        debugLog('Notifications Attempted', {
+          status: newStatus,
+          notificationSent: true,
+          emailSent: true
+        });
+      }
+
       await onStatusUpdate?.(requestId, newStatus);
       toast.success('Status updated successfully');
     } catch (error) {
-      console.error('Status Update Failed:', error);
+      debugLog('Status Update Failed', {
+        error,
+        requestId,
+        newStatus
+      });
       toast.error('Failed to update status');
-      throw error;
     } finally {
       setIsUpdating(false);
     }
@@ -116,6 +202,12 @@ export default function RequestsTable({
   const paginatedRequests = requests.slice(startIndex, startIndex + itemsPerPage);
 
   const statusFilters: RequestStatus[] = ['pending', 'approved', 'rejected', 'fulfilled', 'shipped'];
+
+  console.log('3. Current Requests State:', {
+    total: requests.length,
+    firstItem: requests[0],
+    paginationRange: `${startIndex + 1} to ${startIndex + itemsPerPage}`
+  });
 
   return (
     <div className="space-y-4">

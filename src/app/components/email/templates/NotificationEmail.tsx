@@ -1,53 +1,50 @@
 'use client'
 
-import { Text, Button, Section } from '@react-email/components'
+import { Text } from '@react-email/components'
 import { BaseEmail } from './BaseEmail'
+import { Button, Alert, Section } from '../components'
 import { EmailStyles } from './styles/EmailStyles'
 
 interface NotificationEmailProps {
-  title: string
+  userName: string
+  subject: string
   message: string
-  actionLabel?: string
+  type?: 'info' | 'success' | 'warning' | 'error'
   actionLink?: string
-  additionalDetails?: string
-  previewMode?: boolean
+  actionText?: string
 }
 
-export function NotificationEmail({ 
-  title, 
-  message, 
-  actionLabel, 
-  actionLink, 
-  additionalDetails,
-  previewMode = false 
+export function NotificationEmail({
+  userName,
+  subject,
+  message,
+  type = 'info',
+  actionLink,
+  actionText,
 }: NotificationEmailProps) {
   return (
-    <BaseEmail previewText={title} title={title}>
+    <BaseEmail
+      previewText={subject}
+      title={subject}
+    >
       <Text style={EmailStyles.text}>
-        {message}
+        Hi {userName},
       </Text>
 
-      {actionLabel && actionLink && (
-        <Section style={EmailStyles.buttonContainer}>
-          <Button
-            style={EmailStyles.button}
-            href={previewMode ? '#' : actionLink}
-          >
-            {actionLabel}
+      <Section>
+        <Alert type={type === 'info' ? 'success' : type}>
+          {message}
+        </Alert>
+
+        {actionLink && actionText && (
+          <Button href={actionLink} variant="primary">
+            {actionText}
           </Button>
-        </Section>
-      )}
+        )}
+      </Section>
 
-      {additionalDetails && (
-        <Section style={EmailStyles.detailsContainer}>
-          <Text style={EmailStyles.detailText}>
-            {additionalDetails}
-          </Text>
-        </Section>
-      )}
-
-      <Text style={EmailStyles.footer}>
-        This is an automated notification from our system.
+      <Text style={EmailStyles.text}>
+        If you have any questions, please don't hesitate to contact our support team.
       </Text>
     </BaseEmail>
   )

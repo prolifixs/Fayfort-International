@@ -31,6 +31,7 @@ interface Invoice {
   due_date: string
   created_at: string
   updated_at: string
+  status_updated_at: string
   invoice_items: InvoiceItem[]
   pdf_url?: string
   request?: {
@@ -50,7 +51,12 @@ interface Invoice {
   }
 }
 
-export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
+interface InvoiceDetailProps {
+  invoiceId: string;
+  onPaymentSuccess?: () => void;
+}
+
+export function InvoiceDetail({ invoiceId, onPaymentSuccess }: InvoiceDetailProps) {
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
@@ -156,8 +162,9 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             <button
               onClick={() => setIsPaymentOpen(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+              disabled={invoice.status !== 'draft'}
             >
-              Make Payment
+              {invoice.status !== 'draft' ? 'Paid' : 'Make Payment'}
             </button>
           </div>
         </div>
@@ -254,8 +261,11 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       <PaymentDialog 
         isOpen={isPaymentOpen}
         onClose={() => setIsPaymentOpen(false)}
-        amount={invoice.amount}
-        invoiceId={invoice.id}
+        invoice={invoice}
+        onPaymentSuccess={() => {
+          setIsPaymentOpen(false)
+          onPaymentSuccess?.()
+        }}
       />
     </>
   )

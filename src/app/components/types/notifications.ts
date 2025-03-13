@@ -6,6 +6,15 @@ export type NotificationType =
   | 'invoice_paid'
   | 'payment_due'
 
+export interface NotificationMetadata {
+  status?: string;
+  invoice_id?: string;
+  payment_status?: string;
+  previousStatus?: string;
+  productName?: string;
+  request_id?: string;
+}
+
 export interface DashboardNotification {
   id: string
   type: NotificationType
@@ -13,9 +22,5 @@ export interface DashboardNotification {
   read_status: boolean
   created_at: string
   reference_id: string
-  metadata?: {
-    status?: string
-    invoice_id?: string
-    payment_status?: string
-  }
+  metadata?: NotificationMetadata
 } 

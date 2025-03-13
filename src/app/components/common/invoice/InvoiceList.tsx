@@ -21,7 +21,11 @@ import { MoreHorizontal } from 'lucide-react'
 import { InvoiceDetail } from './InvoiceDetail'
 import { Dialog } from '@headlessui/react'
 
-export function InvoiceList() {
+interface InvoiceListProps {
+  renderPaymentButton?: (invoice: any) => JSX.Element;
+}
+
+export function InvoiceList({ renderPaymentButton }: InvoiceListProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)

@@ -1,43 +1,59 @@
 'use client'
 
-import { Text, Button, Section } from '@react-email/components'
+import { Text } from '@react-email/components'
 import { BaseEmail } from './BaseEmail'
+import { Button, Alert, Section } from '../components'
 import { EmailStyles } from './styles/EmailStyles'
 
 interface PasswordResetEmailProps {
+  userName: string
   resetLink: string
-  previewMode?: boolean
+  resetCode?: string
 }
 
-export function PasswordResetEmail({ resetLink, previewMode = false }: PasswordResetEmailProps) {
-  const previewText = 'Reset Your Password'
-
+export function PasswordResetEmail({
+  userName,
+  resetLink,
+  resetCode,
+}: PasswordResetEmailProps) {
   return (
-    <BaseEmail previewText={previewText} title="Password Reset Request">
-      <Text style={EmailStyles.text}>
-        We received a request to reset your password. Click the button below to create a new password:
-      </Text>
+    <BaseEmail
+      previewText="Reset your password"
+      title="Password Reset Request"
+    >
+      <Alert type="warning">
+        We received a request to reset your password.
+      </Alert>
 
-      <Section style={EmailStyles.buttonContainer}>
-        <Button
-          style={EmailStyles.button}
-          href={previewMode ? '#' : resetLink}
-        >
+      <Section>
+        <Text style={EmailStyles.text}>
+          Hi {userName},
+        </Text>
+
+        <Text style={EmailStyles.text}>
+          Click the button below to reset your password:
+        </Text>
+
+        <Button href={resetLink} variant="primary">
           Reset Password
         </Button>
-      </Section>
 
-      <Section style={EmailStyles.detailsContainer}>
-        <Text style={EmailStyles.detailText}>
-          If you didn't request this password reset, you can safely ignore this email.
-          <br /><br />
-          This link will expire in 1 hour for security purposes.
+        {resetCode && (
+          <>
+            <Text style={EmailStyles.text}>
+              Or use this reset code:
+            </Text>
+            <Alert type="success">
+              {resetCode}
+            </Alert>
+          </>
+        )}
+
+        <Text style={EmailStyles.text}>
+          This link will expire in 1 hour. If you didn't request a password reset,
+          please ignore this email or contact support if you're concerned.
         </Text>
       </Section>
-
-      <Text style={EmailStyles.footer}>
-        For security reasons, never share this email or the reset link with anyone.
-      </Text>
     </BaseEmail>
   )
 } 

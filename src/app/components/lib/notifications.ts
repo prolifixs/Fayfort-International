@@ -1,5 +1,5 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { DashboardNotification, NotificationType } from '@/app/components/types/notifications'
+import { DashboardNotification, NotificationType, NotificationMetadata } from '@/app/components/types/notifications'
 
 export async function createNotification({
   type,
@@ -40,7 +40,7 @@ export async function createNotification({
   }
 }
 
-export function getNotificationMessage(type: NotificationType, metadata: any = {}) {
+export function getNotificationMessage(type: NotificationType, metadata: NotificationMetadata = {}) {
   switch (type) {
     case 'invoice_ready':
       return `Invoice #${metadata.invoice_id} is ready for review`
@@ -49,7 +49,9 @@ export function getNotificationMessage(type: NotificationType, metadata: any = {
     case 'payment_due':
       return `Payment is due for invoice #${metadata.invoice_id}`
     case 'status_change':
-      return `Invoice #${metadata.invoice_id} status changed to ${metadata.status}`
+      return metadata.productName 
+        ? `Status for ${metadata.productName} changed from ${metadata.previousStatus} to ${metadata.status}`
+        : `Status changed to ${metadata.status}`;
     case 'request_update':
       return `Your request #${metadata.request_id} has been updated`
     default:

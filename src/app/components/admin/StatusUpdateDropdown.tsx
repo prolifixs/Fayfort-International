@@ -43,6 +43,20 @@ export function StatusUpdateDropdown({ request, onStatusChange, disabled = false
     shippingDate: null as Date | null
   });
 
+  // Validate props
+  useEffect(() => {
+    console.group('🔍 StatusUpdateDropdown - Validation');
+    console.log('Props Validation:', {
+      hasId: Boolean(request?.id),
+      hasStatus: Boolean(request?.status),
+      hasCustomer: Boolean(request?.customer),
+      customerData: request?.customer,
+      hasProduct: Boolean(request?.product),
+      productData: request?.product
+    });
+    console.groupEnd();
+  }, [request]);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -97,12 +111,47 @@ export function StatusUpdateDropdown({ request, onStatusChange, disabled = false
   };
 
   const handleSubmit = async () => {
-    console.group('📤 StatusUpdateDropdown - Submit Flow');
     setIsProcessing(true);
     setProgress(0);
     setError(null);
     
     try {
+      // First verify customer data exists
+      const { data: requestData, error: fetchError } = await supabase
+        .from('requests')
+        .select(`
+          id,
+          status,
+          customer_id,
+          product_id,
+          quantity,
+          budget,
+          customer:users!requests_customer_id_fkey (
+            id,
+            email
+          ),
+          product:products!requests_product_id_fkey (
+            id,
+            name,
+            status
+          )
+        `)
+        .eq('id', request.id)
+        .single();
+
+      if (fetchError) {
+        console.error('3. Fetch Error:', fetchError);
+        throw new Error('Invalid request or customer data');
+      }
+
+      if (!requestData?.customer) {
+        console.error('No customer data found:', {
+          requestData,
+          customerId: requestData?.customer_id
+        });
+        throw new Error('Invalid request or customer data');
+      }
+
       if (selectedNewStatus === 'shipped') {
         setLoadingMessage('Processing shipping update...');
         
@@ -119,31 +168,27 @@ export function StatusUpdateDropdown({ request, onStatusChange, disabled = false
           }
         );
         
-        setProgress(100);
-        setLoadingMessage('Complete!');
-        
-        // Reset form
-        setShowNotes(false);
-        setShowShippingInfo(false);
-        setShippingInfo({
-          carrier: '',
-          trackingNumber: '',
-          shippingDate: null
-        });
+        // Update parent component
+        await onStatusChange('shipped');
       } else {
+        // Update status and parent component
         await onStatusChange(selectedNewStatus as RequestStatus);
       }
 
       if (selectedNewStatus === 'approved') {
-        console.log('📋 Generating invoice');
+        console.log('Starting approval process for request:', request.id);
+        console.log('Customer data:', requestData?.customer);
+        
         setLoadingMessage('Generating invoice...');
         setProgress(40);
         await generateInvoice(request.id);
+        
+        console.log('Invoice generated successfully');
         setProgress(60);
         
-        console.log('📧 Sending email notification');
         setLoadingMessage('Sending notification email...');
-        setProgress(80);
+        console.log('About to send email notification');
+        
         const requestToInvoiceStatus = {
           pending: 'draft',
           approved: 'sent',
@@ -151,31 +196,54 @@ export function StatusUpdateDropdown({ request, onStatusChange, disabled = false
           rejected: 'cancelled',
           shipped: 'paid'
         } as const;
+
         const invoice: Invoice = {
           id: request.id,
           request_id: request.id,
           user_id: request.customer.id,
           status: requestToInvoiceStatus[selectedNewStatus] || 'draft',
           amount: request.invoice?.amount || 0,
-          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          status_updated_at: new Date().toISOString(),
           invoice_items: []
         };
-        await emailService.sendStatusChangeEmail(
-          invoice,
-          requestToInvoiceStatus[request.status] || 'draft',
-          requestToInvoiceStatus[selectedNewStatus] || 'draft'
-        );
+
+        try {
+          await emailService.sendStatusChangeEmail(
+            invoice,
+            requestToInvoiceStatus[request.status] || 'draft',
+            requestToInvoiceStatus[selectedNewStatus] || 'draft'
+          );
+          console.log('Email sent successfully');
+        } catch (emailError) {
+          console.log('Email service error (but might still have worked):', emailError);
+        }
+
+        setProgress(100);
+        setLoadingMessage('Complete!');
       }
       
-    } catch (error) {
-      console.error('❌ Submit failed:', error);
-      setError('Failed to process shipping update');
-      throw error;
+      // Reset UI state
+      setShowNotes(false);
+      setShowShippingInfo(false);
+      setProgress(100);
+      setLoadingMessage('Complete!');
+      
+      // Clear form data
+      setNotes('');
+      setShippingInfo({
+        carrier: '',
+        trackingNumber: '',
+        shippingDate: null
+      });
+
+    } catch (err) {
+      console.error('Error in submit flow:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setIsProcessing(false);
-      console.groupEnd();
     }
   };
 

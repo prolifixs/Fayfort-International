@@ -99,8 +99,8 @@ export class StatusService {
       const currentStatus = await this.getCurrentStatus(requestId);
       const statusMapping = STATUS_MAPPINGS[newStatus];
 
-      // Handle all updates in a single operation
-      const updates = [
+      // Handle database updates first
+      await Promise.all([
         // Update main request status
         this.supabase.from('requests')
           .update({ 
@@ -121,24 +121,25 @@ export class StatusService {
           notes,
           invoice_status: statusMapping.invoice
         })
-      ];
+      ]);
 
-      // Add shipping update if provided
+      // Handle shipping separately if needed
       if (newStatus === 'shipped' && shippingInfo) {
-        updates.push(this.shippingService.processShippingUpdate(requestId, shippingInfo));
+        await this.shippingService.processShippingUpdate(requestId, shippingInfo);
       }
 
-      await Promise.all(updates);
-
-      // Send notification with correct type
-      await this.notificationService.sendStatusUpdateNotification(
-        requestId,
-        newStatus as RequestStatus,
-        {
-          previousStatus: currentStatus as RequestStatus,
-          notificationType: statusMapping.notification
-        }
-      );
+      // Send notification last - if it fails, status update is still complete
+      try {
+        await this.notificationService.sendStatusUpdateNotification(
+          requestId,
+          newStatus,
+          {
+            previousStatus: currentStatus
+          }
+        );
+      } catch (notificationError) {
+        console.warn('Notification failed but status updated:', notificationError);
+      }
 
       console.log('Status Update Completed:', { newStatus, shipping: !!shippingInfo });
       return {

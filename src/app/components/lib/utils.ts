@@ -10,4 +10,12 @@ export function formatCurrency(amount: number): string {
     style: 'currency',
     currency: 'USD'
   }).format(amount);
-} 
+}
+
+export const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}; 

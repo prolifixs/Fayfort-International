@@ -32,7 +32,21 @@ export function EmailPreview({ invoice, open, onClose, onSend }: EmailPreviewPro
           <DialogTitle>Email Preview</DialogTitle>
         </DialogHeader>
         <div className="border rounded-md p-4 bg-white">
-          <InvoiceEmail invoice={invoice} previewMode />
+          <InvoiceEmail
+            customerName={invoice.request?.customer?.name || "Customer"}
+            invoiceNumber={invoice.id}
+            amount={invoice.amount}
+            dueDate={invoice.due_date}
+            items={invoice.invoice_items.map(item => ({
+              description: item.product.name,
+              quantity: item.quantity,
+              price: item.unit_price
+            }))}
+            paymentLink={`${process.env.NEXT_PUBLIC_APP_URL}/invoice/${invoice.id}`}
+            status={invoice.status === 'paid' ? 'paid' : 
+                   invoice.status === 'sent' ? 'pending' : 
+                   invoice.status === 'failed' ? 'overdue' : 'pending'}
+          />
         </div>
         <div className="flex justify-end space-x-3 mt-4">
           <button

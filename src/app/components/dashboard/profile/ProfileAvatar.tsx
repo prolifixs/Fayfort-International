@@ -34,7 +34,7 @@ export function ProfileAvatar({ imageUrl, userName, onImageUpdate }: ProfileAvat
     
     try {
       const publicUrl = await avatarService.uploadAvatar(file)
-      onImageUpdate(publicUrl)
+      await onImageUpdate(publicUrl)
       toast({
         message: 'Profile picture updated successfully',
         type: 'success'

@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@/app/components/common/error/ErrorBoundary'
 import { Suspense } from 'react'
 import { InvoiceSkeleton } from '@/app/components/common/loading/InvoiceSkeleton'
 import { Toaster } from "@/app/components/ui/toaster"
+import { StripeProvider } from '@/app/providers/StripeProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -24,9 +25,11 @@ export default function RootLayout({
       <body className={inter.className}>
         <ErrorBoundary>
           <Suspense fallback={<InvoiceSkeleton />}>
-            <ClientLayout>
-              {children}
-            </ClientLayout>
+            <StripeProvider>
+              <ClientLayout>
+                {children}
+              </ClientLayout>
+            </StripeProvider>
           </Suspense>
         </ErrorBoundary>
         <Toaster />

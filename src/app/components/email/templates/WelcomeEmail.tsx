@@ -1,53 +1,53 @@
 'use client'
 
-import { Text, Button, Section, Hr } from '@react-email/components'
+import { Text } from '@react-email/components'
 import { BaseEmail } from './BaseEmail'
+import { Button, Section } from '../components'
 import { EmailStyles } from './styles/EmailStyles'
 
 interface WelcomeEmailProps {
-  name: string
-  previewMode?: boolean
+  userName: string
+  verificationLink: string
 }
 
-export function WelcomeEmail({ name, previewMode = false }: WelcomeEmailProps) {
-  const previewText = `Welcome to Our Platform, ${name}!`
-
+export function WelcomeEmail({
+  userName,
+  verificationLink,
+}: WelcomeEmailProps) {
   return (
-    <BaseEmail previewText={previewText} title="Welcome to Our Platform!">
-      <Text style={EmailStyles.text}>
-        Hi {name},
-      </Text>
-      
-      <Text style={EmailStyles.text}>
-        We're excited to have you on board! Here's what you can do to get started:
-      </Text>
+    <BaseEmail
+      previewText="Welcome to FayfortEnterprise! Please verify your email to get started."
+      title={`Welcome, ${userName}!`}
+    >
+      <Section>
+        <Text style={EmailStyles.text}>
+          Thank you for joining FayfortEnterprise! We're excited to have you on board.
+        </Text>
 
-      <Section style={EmailStyles.detailsContainer}>
-        <Text style={EmailStyles.detailText}>
-          • Complete your profile information
-          <br />
-          • Browse available products
-          <br />
-          • Set up your payment preferences
-          <br />
-          • Explore our documentation
+        <Text style={EmailStyles.text}>
+          To get started, please verify your email address by clicking the button below:
+        </Text>
+
+        <Button href={verificationLink} variant="primary">
+          Verify Email Address
+        </Button>
+
+        <Text style={EmailStyles.text}>
+          This verification link will expire in 24 hours. If you didn't create an account,
+          you can safely ignore this email.
         </Text>
       </Section>
 
-      <Hr style={{ ...EmailStyles.text, borderTop: '1px solid #e5e7eb', margin: '32px 0' }} />
-
-      <Section style={EmailStyles.buttonContainer}>
-        <Button
-          style={EmailStyles.button}
-          href={previewMode ? '#' : '/dashboard'}
-        >
-          Get Started
-        </Button>
+      <Section style={{ backgroundColor: '#f9fafb' }}>
+        <Text style={{ ...EmailStyles.text, fontWeight: '600' }}>
+          What's next?
+        </Text>
+        <Text style={EmailStyles.text}>
+          • Complete your profile<br />
+          • Explore our services<br />
+          • Submit your first request
+        </Text>
       </Section>
-
-      <Text style={EmailStyles.footer}>
-        If you have any questions, feel free to reach out to our support team.
-      </Text>
     </BaseEmail>
   )
 } 

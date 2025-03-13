@@ -39,8 +39,35 @@ export function ProfileInfo({ user }: ProfileInfoProps) {
   })
   const { toast, isVisible, toastProps, onClose } = useToast()
 
-  const handleAvatarUpdate = (url: string) => {
-    setFormData(prev => ({ ...prev, avatar_url: url }))
+  const handleAvatarUpdate = async (url: string) => {
+    try {
+      const supabase = createClientComponentClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) throw new Error('No user found')
+
+      // Update user_profiles table
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          avatar_url: url,
+          updated_at: new Date().toISOString()
+        })
+
+      // Update auth.users metadata
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: { avatar_url: url }
+      })
+
+      if (profileError || metadataError) throw new Error('Failed to update profile')
+
+      setFormData(prev => ({ ...prev, avatar_url: url }))
+      toast({ message: 'Profile picture updated successfully', type: 'success' })
+    } catch (error) {
+      console.error('Error updating avatar:', error)
+      toast({ message: 'Failed to update profile picture', type: 'error' })
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

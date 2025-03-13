@@ -100,7 +100,6 @@ export async function generateInvoice(requestId: string) {
       await emailService.sendInvoiceEmail(invoice, user.email);
     } catch (error) {
       console.warn('Email sending failed, but continuing:', error);
-      // Don't throw error, allow process to continue
     }
 
     // Create notification

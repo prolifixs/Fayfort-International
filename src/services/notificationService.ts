@@ -1,5 +1,6 @@
 import { RequestStatus } from "@/app/components/types/request.types";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { EmailService } from "@/services/emailService";
 
 export type NotificationType = 
   | 'success' 
@@ -27,6 +28,7 @@ export class NotificationService {
   private readonly STORAGE_KEY = 'notifications';
   private listeners: ((notifications: Notification[]) => void)[] = [];
   private supabase = createClientComponentClient();
+  private emailService = new EmailService();
 
   private getNotifications(): Notification[] {
     const stored = localStorage.getItem(this.STORAGE_KEY);
@@ -138,54 +140,152 @@ export class NotificationService {
     });
   }
 
-  async sendStatusUpdateNotification(requestId: string, newStatus: RequestStatus, options?: {
-    previousStatus?: RequestStatus;
-    userId?: string;
-    productName?: string;
-    notificationType?: NotificationType; 
-  }): Promise<void> {
-    try {
-      const { data: user } = await this.supabase.auth.getUser();
-      if (!user.user) throw new Error('User not authenticated');
+  async sendStatusUpdateNotification(
+    requestId: string,
+    newStatus: RequestStatus,
+    options: {
+      previousStatus?: RequestStatus;
+      productName?: string;
+    }
+  ) {
+    const DEBUG = true;
+    const debugLog = (group: string, data: any) => {
+      if (DEBUG) {
+        console.group(`🔍 ${group}`);
+        console.log(data);
+        console.groupEnd();
+      }
+    };
 
-      // 1. Create notification record
+    debugLog('Notification Service Started', {
+      requestId,
+      newStatus,
+      options
+    });
+
+    try {
+      // Fetch request
+      const { data: request, error: requestError } = await this.supabase
+        .from('requests')
+        .select('id, customer_id, product_id')
+        .eq('id', requestId)
+        .single();
+
+      debugLog('Request Fetch Result', {
+        success: !requestError,
+        request,
+        error: requestError
+      });
+
+      if (requestError || !request) {
+        debugLog('Request Fetch Failed', { requestId, error: requestError });
+        return;
+      }
+
+      // Fetch related data
+      const [userResult, productResult] = await Promise.all([
+        this.supabase
+          .from('users')
+          .select('email')
+          .eq('id', request.customer_id)
+          .single(),
+        this.supabase
+          .from('products')
+          .select('name')
+          .eq('id', request.product_id)
+          .single()
+      ]);
+
+      debugLog('Related Data Fetch', {
+        hasUserEmail: Boolean(userResult.data?.email),
+        hasProductName: Boolean(productResult.data?.name),
+        userError: userResult.error,
+        productError: productResult.error
+      });
+
+      const emailContent = this.getEmailContentForStatus(
+        newStatus,
+        options.productName || productResult.data?.name,
+        options.previousStatus
+      );
+
+      debugLog('Email Content Generated', {
+        subject: emailContent.subject,
+        hasMessage: Boolean(emailContent.message)
+      });
+
+      await this.emailService.sendNotificationEmail(
+        userResult.data?.email,
+        emailContent.subject,
+        emailContent.message
+      );
+
+      debugLog('Email Service Called', {
+        recipient: userResult.data?.email,
+        subject: emailContent.subject
+      });
+
+      // Create notification record
       await this.createNotification({
         type: 'status_change',
-        content: `Request status updated to ${newStatus}`,
+        content: emailContent.message,
         reference_id: requestId,
         reference_type: 'request',
         metadata: {
-          previous_status: options?.previousStatus,
-          new_status: newStatus,
-          product_name: options?.productName
+          previousStatus: options.previousStatus,
+          newStatus,
+          productName: options.productName || productResult.data?.name
         }
       });
 
-      // 2. Create activity log entry
-      await this.supabase.from('activity_log').insert({
-        type: 'status_change',
-        content: `Request ${requestId} status changed to ${newStatus}`,
-        reference_id: requestId,
-        user_id: user.user.id,
-        metadata: {
-          previous_status: options?.previousStatus,
-          new_status: newStatus,
-          product_name: options?.productName
-        }
+      debugLog('Notification Record Created', {
+        requestId,
+        type: 'status_change'
       });
-
-      // 3. Broadcast the update
-      await this.supabase.channel('requests')
-        .send({
-          type: 'broadcast',
-          event: 'status_update',
-          payload: { requestId, status: newStatus }
-        });
 
     } catch (error) {
-      console.error('Failed to send status update notification:', error);
-      throw new Error('Failed to send status update notification');
+      debugLog('Notification Service Error', {
+        requestId,
+        newStatus,
+        error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
     }
+  }
+
+  private getEmailContentForStatus(
+    status: RequestStatus,
+    productName: string,
+    previousStatus?: RequestStatus
+  ) {
+    const statusMessages = {
+      pending: {
+        subject: 'Request Received',
+        message: `Your request for ${productName} is being reviewed`
+      },
+      approved: {
+        subject: 'Request Approved',
+        message: `Your request for ${productName} has been approved`
+      },
+      fulfilled: {
+        subject: 'Request Fulfilled',
+        message: `Your request for ${productName} has been fulfilled`
+      },
+      shipped: {
+        subject: 'Order Shipped',
+        message: `Your order for ${productName} is on its way`
+      },
+      rejected: {
+        subject: 'Request Status Update',
+        message: `There was an update to your request for ${productName}`
+      }
+    };
+
+    return statusMessages[status] || {
+      subject: 'Request Status Update',
+      message: `Status for ${productName} changed from ${previousStatus} to ${status}`
+    };
   }
 
   // Add a method to handle request-specific notifications
@@ -211,6 +311,122 @@ export class NotificationService {
           created_at: new Date().toISOString()
         });
     });
+  }
+
+  // Add new methods for payment notifications
+  async sendPaymentNotification(
+    requestId: string,
+    type: 'payment_confirmed' | 'payment_pending' | 'payment_failed',
+    paymentDetails: {
+      amount: number;
+      invoiceId: string;
+      paymentId?: string;
+    }
+  ) {
+    try {
+      const { data: request } = await this.supabase
+        .from('requests')
+        .select(`
+          *,
+          customer:users!inner(email, name),
+          product:products!inner(name)
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (!request) throw new Error('Request not found');
+
+      const emailContent = this.getPaymentEmailContent(type, paymentDetails);
+
+      // Use existing email service
+      await this.emailService.sendNotificationEmail(
+        request.customer.email,
+        emailContent.subject,
+        emailContent.message
+      );
+
+      // Log using existing mechanism
+      await this.createNotification({
+        type,
+        content: emailContent.message,
+        reference_id: requestId,
+        reference_type: 'payment',
+        metadata: paymentDetails
+      });
+
+    } catch (error) {
+      console.error('Payment notification failed:', error);
+      throw error;
+    }
+  }
+
+  // Add shipping notification handler
+  async sendShippingNotification(
+    requestId: string,
+    shippingDetails: {
+      trackingNumber: string;
+      carrier: string;
+      estimatedDelivery: string;
+    }
+  ) {
+    try {
+      const { data: request } = await this.supabase
+        .from('requests')
+        .select(`
+          *,
+          customer:users!inner(email, name),
+          product:products!inner(name)
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (!request) throw new Error('Request not found');
+
+      const emailContent = {
+        subject: 'Your Order Has Been Shipped',
+        message: `Your order for ${request.product.name} has been shipped via ${shippingDetails.carrier}. Tracking number: ${shippingDetails.trackingNumber}`
+      };
+
+      await this.emailService.sendNotificationEmail(
+        request.customer.email,
+        emailContent.subject,
+        emailContent.message
+      );
+
+      await this.createNotification({
+        type: 'shipping_confirmed',
+        content: emailContent.message,
+        reference_id: requestId,
+        reference_type: 'shipping',
+        metadata: shippingDetails
+      });
+
+    } catch (error) {
+      console.error('Shipping notification failed:', error);
+      throw error;
+    }
+  }
+
+  private getPaymentEmailContent(
+    type: 'payment_confirmed' | 'payment_pending' | 'payment_failed',
+    details: { amount: number; invoiceId: string }
+  ) {
+    const templates = {
+      payment_confirmed: {
+        subject: 'Payment Confirmed',
+        message: `Your payment of $${details.amount} for invoice #${details.invoiceId} has been confirmed.`
+      },
+      payment_pending: {
+        subject: 'Payment Processing',
+        message: `Your payment of $${details.amount} for invoice #${details.invoiceId} is being processed.`
+      },
+      payment_failed: {
+        subject: 'Payment Failed',
+        message: `Your payment of $${details.amount} for invoice #${details.invoiceId} could not be processed.`
+      }
+    };
+
+    return templates[type];
   }
 }
 

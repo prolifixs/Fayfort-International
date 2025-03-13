@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { InvoiceDetail } from '@/app/components/common/invoice/InvoiceDetail'
 import { ArrowLeft } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Invoice } from '@/app/components/types/invoice'
+import { Invoice, InvoiceStatus } from '@/app/components/types/invoice'
 import { StatusBadge } from '@/app/components/ui/StatusBadge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
@@ -16,36 +16,71 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   const supabase = createClientComponentClient()
   const [showOrphanedDialog, setShowOrphanedDialog] = useState(false)
 
-  useEffect(() => {
-    const fetchInvoice = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('invoices')
-          .select(`
-            *,
-            request:requests(
-              id,
-              status,
-              customer:users(email),
-              status_history
-            )
-          `)
-          .eq('id', params.id)
-          .single()
+  const fetchInvoice = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          request:requests(
+            id,
+            status,
+            customer:users(email),
+            status_history
+          )
+        `)
+        .eq('id', params.id)
+        .single()
 
-        if (error) throw error
-        
-        if (!data.request) {
-          setShowOrphanedDialog(true)
-          return
-        }
-        
-        setInvoice(data)
-      } catch (error) {
-        console.error('Failed to fetch invoice:', error)
+      if (error) throw error
+      
+      if (!data.request) {
+        setShowOrphanedDialog(true)
+        return
       }
+      
+      setInvoice(data)
+    } catch (error) {
+      console.error('Failed to fetch invoice:', error)
     }
+  }
+
+  useEffect(() => {
     fetchInvoice()
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel(`invoice-${params.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'invoices',
+          filter: `id=eq.${params.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            // Update local state when invoice changes
+            setInvoice(current => {
+              if (!current) return current;
+              const newData = payload.new as Partial<Invoice>;
+              return {
+                ...current,
+                ...newData,
+                id: newData.id || current.id,
+                status: newData.status || current.status,
+                status_updated_at: newData.status_updated_at || current.status_updated_at
+              } as Invoice
+            })
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [params.id])
 
   if (!invoice) return <div>Loading...</div>
@@ -62,7 +97,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
             Back to Dashboard
           </button>
           <StatusBadge 
-            status={invoice.status} 
+            status={invoice.status as InvoiceStatus}
             type="invoice"
             showIcon
             showTimestamp
@@ -71,7 +106,10 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
         </div>
 
         <div className="bg-white rounded-lg shadow">
-          <InvoiceDetail invoiceId={params.id} />
+          <InvoiceDetail 
+            invoiceId={params.id} 
+            onPaymentSuccess={fetchInvoice}
+          />
         </div>
       </div>
 

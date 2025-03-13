@@ -4,7 +4,7 @@ import { DashboardNotifications } from '../components/dashboard/DashboardNotific
 import { RequestFlow } from '../components/dashboard/RequestFlow'
 import { UserRequestsTable } from '../components/dashboard/UserRequestsTable'
 import RequestFormModal from '../components/dashboard/RequestFormModal'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useToast } from '@/hooks/useToast'
 import { Database } from '@/app/components/types/database.types'
@@ -13,8 +13,17 @@ import { useRouter } from 'next/navigation'
 import { FayfayAIPreview } from '../components/dashboard/FayfayAIPreview'
 import { RequestTabs } from '../components/admin/RequestTabs'
 import { Bell, FileText, Bookmark } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { WelcomeModal } from '../components/onboarding/WelcomeModal'
 
 type Product = Database['public']['Tables']['products']['Row']
+
+interface Invoice {
+  id: string;
+  amount: number;
+  request_id: string;
+  // ... other invoice fields
+}
 
 export default function DashboardPage() {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
@@ -25,9 +34,38 @@ export default function DashboardPage() {
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const router = useRouter()
+  const { isNewUser, markUserVisited } = useAuth()
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+
+  useEffect(() => {
+    // Show welcome modal if it's a new user
+    if (isNewUser) {
+      setShowWelcomeModal(true)
+    }
+  }, [isNewUser])
 
   const handleStatusUpdate = async (requestId: string, newStatus: 'approved' | 'rejected') => {
     try {
+      // First fetch the request with customer data
+      const { data: request, error: fetchError } = await supabase
+        .from('requests')
+        .select(`
+          *,
+          customer:users!requests_customer_id_fkey (
+            id,
+            email
+          )
+        `)
+        .eq('id', requestId)
+        .single()
+
+      if (fetchError || !request.customer) {
+        throw new Error('Invalid request or customer data')
+      }
+
+      // Then update the status
       const { error } = await supabase
         .from('requests')
         .update({ 
@@ -35,7 +73,7 @@ export default function DashboardPage() {
           resolution_status: 'resolved'
         })
         .eq('id', requestId)
-  
+
       if (error) throw error
       
       toast({
@@ -89,8 +127,50 @@ export default function DashboardPage() {
     setSortField(field);
   };
 
+  const handleCloseWelcomeModal = () => {
+    setShowWelcomeModal(false)
+    markUserVisited()
+  }
+
+  const handleTakeTour = () => {
+    // Tour functionality will be implemented later
+    console.log('Tour feature coming soon')
+  }
+
+  const handleViewDetails = async (requestId: string) => {
+    try {
+      const { data: invoice, error } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('request_id', requestId)
+        .single();
+
+      if (error || !invoice?.amount) {
+        throw new Error('Invalid invoice data');
+      }
+
+      // Now open the payment dialog with valid invoice data
+      setSelectedInvoice(invoice);
+      setShowPaymentDialog(true);
+    } catch (error) {
+      console.error('Error fetching invoice:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load invoice details',
+        variant: 'destructive'
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Welcome Modal */}
+      <WelcomeModal 
+        isOpen={showWelcomeModal}
+        onClose={handleCloseWelcomeModal}
+        onTakeTour={handleTakeTour}
+      />
+
       <div className="py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}

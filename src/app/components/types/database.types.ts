@@ -282,6 +282,18 @@ export type Category = TableRow<'categories'>
 
 // Base product type
 interface BaseProduct extends TableRow<'products'> {
+  id: string
+  name: string
+  image_url: string | null
+  description: string | null
+  price_range: string
+  availability: boolean
+  specifications: Json | null
+  category_id: string
+  status: 'active' | 'inactive'
+  created_at: string
+  updated_at: string
+  request_count?: number
   media?: ProductMedia[]
   category?: Category
 }

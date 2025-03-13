@@ -62,11 +62,11 @@ export default function RequestPage() {
           id,
           status,
           created_at,
-          quantity,
-          budget,
           customer_id,
           product_id,
-          customer:users!left (
+          quantity,
+          budget,
+          customer:users!requests_customer_id_fkey (
             id,
             email
           ),
@@ -106,11 +106,44 @@ export default function RequestPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      const { data: requestData, error: fetchError } = await supabase
+        .from('requests')
+        .select(`
+          id,
+          status,
+          customer_id,
+          product_id,
+          quantity,
+          budget,
+          customer:users!requests_customer_id_fkey (
+            id,
+            email
+          ),
+          product:products!requests_product_id_fkey (
+            id,
+            name
+          )
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!requestData) throw new Error('Request not found');
+
+      // Add logging to debug the structure
+      console.log('Request Data:', requestData);
+
+      // Access the email correctly from the array structure
+      const customerEmail = requestData.customer?.[0]?.email;
+      if (!customerEmail) {
+        throw new Error('Customer email not found');
+      }
+
       await statusService.updateStatus(
         requestId,
         newStatus,
         user.id,
-        undefined,
+        customerEmail,  // Use the extracted email
         newStatus === 'shipped' ? getShippingInfo() : undefined
       );
 

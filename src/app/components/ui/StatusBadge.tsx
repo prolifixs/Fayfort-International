@@ -11,7 +11,7 @@ import {
 
 export type RequestStatus = 'pending' | 'approved' | 'fulfilled' | 'shipped'
 export type ProductStatus = 'active' | 'inactive'
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled'
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled' | 'processing' | 'failed'
 export type ResolutionStatus = 'pending' | 'notified' | 'resolved'
 export type AllStatus = RequestStatus | ProductStatus | InvoiceStatus | ResolutionStatus
 
@@ -67,6 +67,17 @@ const statusStyles: Record<AllStatus, { bg: string; text: string; icon: JSX.Elem
     icon: <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
   },
   cancelled: {
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+  },
+  // Add new invoice statuses
+  processing: {
+    bg: 'bg-blue-100',
+    text: 'text-blue-800',
+    icon: <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+  },
+  failed: {
     bg: 'bg-red-100',
     text: 'text-red-800',
     icon: <span className="h-1.5 w-1.5 rounded-full bg-red-400" />

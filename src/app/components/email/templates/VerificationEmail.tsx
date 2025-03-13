@@ -1,48 +1,52 @@
 'use client'
 
-import { Text, Button, Section } from '@react-email/components'
+import { Text } from '@react-email/components'
 import { BaseEmail } from './BaseEmail'
+import { Button, Alert, Section } from '../components'
 import { EmailStyles } from './styles/EmailStyles'
 
 interface VerificationEmailProps {
+  userName: string
+  verificationCode: string
   verificationLink: string
-  name: string
-  previewMode?: boolean
 }
 
-export function VerificationEmail({ verificationLink, name, previewMode = false }: VerificationEmailProps) {
-  const previewText = 'Verify Your Email Address'
-
+export function VerificationEmail({
+  userName,
+  verificationCode,
+  verificationLink,
+}: VerificationEmailProps) {
   return (
-    <BaseEmail previewText={previewText} title="Verify Your Email Address">
+    <BaseEmail
+      previewText="Verify your email address"
+      title="Email Verification"
+    >
       <Text style={EmailStyles.text}>
-        Hi {name},
+        Hi {userName},
       </Text>
 
-      <Text style={EmailStyles.text}>
-        Thanks for signing up! Please verify your email address to complete your registration and access all features.
-      </Text>
+      <Section>
+        <Text style={EmailStyles.text}>
+          Please verify your email address by clicking the button below:
+        </Text>
 
-      <Section style={EmailStyles.buttonContainer}>
-        <Button
-          style={EmailStyles.button}
-          href={previewMode ? '#' : verificationLink}
-        >
-          Verify Email Address
+        <Button href={verificationLink} variant="primary">
+          Verify Email
         </Button>
-      </Section>
 
-      <Section style={EmailStyles.detailsContainer}>
-        <Text style={EmailStyles.detailText}>
-          This verification link will expire in 24 hours.
-          <br /><br />
-          If you didn't create an account, you can safely ignore this email.
+        <Text style={EmailStyles.text}>
+          Or enter this verification code:
+        </Text>
+
+        <Alert type="success">
+          {verificationCode}
+        </Alert>
+
+        <Text style={EmailStyles.text}>
+          This code will expire in 1 hour. If you didn't request this verification,
+          please ignore this email.
         </Text>
       </Section>
-
-      <Text style={EmailStyles.footer}>
-        Need help? Contact our support team.
-      </Text>
     </BaseEmail>
   )
 } 
