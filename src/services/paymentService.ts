@@ -1,28 +1,55 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Invoice, RequestStatus } from '@/app/components/types/invoice'
 import { NotificationService } from '@/services/notificationService'
+import { config } from '../config/env'
+import Stripe from 'stripe'
 
 export class PaymentService {
   private supabase = createClientComponentClient()
+  private stripe: Stripe
+
+  constructor() {
+    const stripeKey = config.isProduction 
+      ? process.env.STRIPE_LIVE_SECRET_KEY 
+      : process.env.STRIPE_TEST_SECRET_KEY;
+
+    if (!stripeKey) {
+      throw new Error(`Stripe ${config.isProduction ? 'live' : 'test'} key not configured`);
+    }
+    
+    this.stripe = new Stripe(stripeKey, {
+      apiVersion: '2025-02-24.acacia'
+    })
+  }
 
   async createPaymentIntent(invoice: Invoice) {
-    const response = await fetch('/api/payments/create-intent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ invoice }),
-    });
+    try {
+      if (!config.isProduction) {
+        console.log('🔧 Test Mode Active:');
+        console.log('- Use card: 4242424242424242');
+        console.log('- Any future date for expiry');
+        console.log('- Any 3 digits for CVC');
+      }
 
-    if (!response.ok) {
-      throw new Error('Failed to create payment intent');
+      const intent = await this.stripe.paymentIntents.create({
+        amount: invoice.amount * 100,
+        currency: 'usd',
+        metadata: {
+          invoiceId: invoice.id,
+          environment: config.isProduction ? 'production' : 'test',
+          createdAt: new Date().toISOString()
+        }
+      })
+
+      return {
+        clientSecret: intent.client_secret,
+        customerId: intent.customer,
+        testMode: !config.isProduction
+      }
+    } catch (error) {
+      console.error('Payment intent creation failed:', error)
+      throw error
     }
-
-    const data = await response.json();
-    return {
-      clientSecret: data.clientSecret,
-      customerId: data.customerId
-    };
   }
 
   async updateInvoiceStatus(invoiceId: string, status: Invoice['status']) {
@@ -36,51 +63,42 @@ export class PaymentService {
 
   async processPayment(paymentIntentId: string, invoiceId: string) {
     try {
-      // Start transaction
       await this.updateInvoiceStatus(invoiceId, 'processing')
 
-      const response = await fetch('/api/payments/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentIntentId, invoiceId }),
-      })
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId)
+      
+      if (paymentIntent.status !== 'succeeded') {
+        throw new Error('Payment not successful')
+      }
 
-      if (!response.ok) throw new Error('Payment processing failed')
-
-      // Get request ID for the invoice
       const { data: invoice } = await this.supabase
         .from('invoices')
-        .select('request_id')
+        .select('request_id, user_id')
         .eq('id', invoiceId)
         .single()
 
       if (invoice?.request_id) {
-        // Update both invoice and request status
         await Promise.all([
           this.updateInvoiceStatus(invoiceId, 'paid'),
-          this.updateRequestStatus(invoice.request_id, 'fulfilled')
+          this.updateRequestStatus(invoice.request_id, 'fulfilled'),
+          this.notifyPaymentSuccess(invoice)
         ])
-
-        // Send notification for status change
-        const notificationService = new NotificationService()
-        await notificationService.sendStatusUpdateNotification(
-          invoice.request_id,
-          'fulfilled',
-          {
-            previousStatus: 'approved'
-          }
-        )
       }
 
-      // Update invoice status to paid on success
-      await this.updateInvoiceStatus(invoiceId, 'paid')
-
-      return await response.json()
+      return { success: true, invoice }
     } catch (error) {
-      // Update invoice status to failed on error
-      await this.updateInvoiceStatus(invoiceId, 'cancelled')
+      await this.updateInvoiceStatus(invoiceId, 'failed')
       throw error
     }
+  }
+
+  private async notifyPaymentSuccess(invoice: { request_id: string; user_id: string }) {
+    const notificationService = new NotificationService()
+    await notificationService.sendStatusUpdateNotification(
+      invoice.request_id,
+      'fulfilled',
+      { previousStatus: 'approved' }
+    )
   }
 
   private async updateRequestStatus(requestId: string, status: RequestStatus) {

@@ -1,8 +1,11 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 
-export async function GET(request: Request) {
+export const dynamic = 'force-dynamic'
+export const runtime = 'edge' // Optional: if you want to use edge runtime
+
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');

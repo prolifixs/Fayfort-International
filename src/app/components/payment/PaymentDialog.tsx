@@ -216,83 +216,92 @@ export function PaymentDialog({ isOpen, onClose, invoice, onPaymentSuccess }: Pa
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validatePaymentDetails()) return;
-    
-    if (paymentAttempts >= MAX_PAYMENT_ATTEMPTS) {
-      toast({
-        title: 'Too Many Failed Attempts',
-        description: 'Please contact support or try again later',
-        variant: 'destructive',
-      });
-      onClose();
-      return;
-    }
+ // ... rest of the imports and code remain the same
 
-    setIsProcessing(true);
-    setError(null);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!validatePaymentDetails()) return;
+  
+  if (paymentAttempts >= MAX_PAYMENT_ATTEMPTS) {
+    toast({
+      title: 'Too Many Failed Attempts',
+      description: 'Please contact support or try again later',
+      variant: 'destructive',
+    });
+    onClose();
+    return;
+  }
 
-    try {
-      if (selectedMethod === 'card') {
-        const { clientSecret, customerId } = await paymentService.createPaymentIntent(invoice);
-        let paymentResult;
+  setIsProcessing(true);
+  setError(null);
 
-        if (selectedCardId) {
-          const savedCard = savedCards.find(card => card.id === selectedCardId);
-          if (!savedCard) throw new Error('Selected card not found');
+  try {
+    if (selectedMethod === 'card') {
+      const paymentIntent = await paymentService.createPaymentIntent(invoice);
+      
+      if (!paymentIntent?.clientSecret) {
+        throw new Error('Failed to create payment intent');
+      }
 
-          paymentResult = await stripe!.confirmCardPayment(clientSecret, {
-            payment_method: savedCard.stripe_payment_method_id
-          });
-        } else {
-          const cardElement = elements?.getElement(CardElement);
-          if (!cardElement) throw new Error('Card element not found');
+      let paymentResult;
 
-          paymentResult = await stripe!.confirmCardPayment(clientSecret, {
-            payment_method: {
-              card: cardElement,
-            }
-          });
-        }
+      if (selectedCardId) {
+        const savedCard = savedCards.find(card => card.id === selectedCardId);
+        if (!savedCard) throw new Error('Selected card not found');
 
-        if (paymentResult.error) {
-          throw paymentResult.error;
-        }
+        paymentResult = await stripe!.confirmCardPayment(paymentIntent.clientSecret, {
+          payment_method: savedCard.stripe_payment_method_id
+        });
+      } else {
+        const cardElement = elements?.getElement(CardElement);
+        if (!cardElement) throw new Error('Card element not found');
 
-        if (paymentResult.paymentIntent.status === 'succeeded') {
-          await paymentService.processPayment(paymentResult.paymentIntent.id, invoice.id);
-          setShowSuccessDialog(true);
-          
-          try {
-            await notificationService.sendPaymentNotification(
-              invoice.request_id,
-              'payment_confirmed',
-              {
-                amount: invoice.amount,
-                invoiceId: invoice.id,
-                paymentId: paymentResult.paymentIntent.id
-              }
-            );
-          } catch (notificationError) {
-            console.error('Notification error:', notificationError);
+        paymentResult = await stripe!.confirmCardPayment(paymentIntent.clientSecret, {
+          payment_method: {
+            card: cardElement,
           }
-        }
-      } else if (selectedMethod === 'wire') {
-        toast({
-          title: 'Wire Transfer Selected',
-          description: 'Please use the bank information provided to complete your transfer.',
         });
       }
-    } catch (err) {
-      await logPaymentError(err, 'payment_submission');
-      handlePaymentFailure(err);
-      setPaymentAttempts(prev => prev + 1);
-    } finally {
-      setIsProcessing(false);
+
+      if (paymentResult.error) {
+        throw paymentResult.error;
+      }
+
+      if (paymentResult.paymentIntent.status === 'succeeded') {
+        await paymentService.processPayment(paymentResult.paymentIntent.id, invoice.id);
+        setShowSuccessDialog(true);
+        
+        try {
+          await notificationService.sendPaymentNotification(
+            invoice.request_id,
+            'payment_confirmed',
+            {
+              amount: invoice.amount,
+              invoiceId: invoice.id,
+              paymentId: paymentResult.paymentIntent.id
+            }
+          );
+        } catch (notificationError) {
+          console.error('Notification error:', notificationError);
+        }
+      }
+    } else if (selectedMethod === 'wire') {
+      toast({
+        title: 'Wire Transfer Selected',
+        description: 'Please use the bank information provided to complete your transfer.',
+      });
     }
-  };
+  } catch (err) {
+    await logPaymentError(err, 'payment_submission');
+    handlePaymentFailure(err);
+    setPaymentAttempts(prev => prev + 1);
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
+// ... rest of the component remains the same
 
   const handleAddNewCard = async () => {
     setShowNewCardForm(true);

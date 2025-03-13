@@ -10,6 +10,7 @@ import { VerificationEmail } from '@/app/components/email/templates/Verification
 import { PasswordResetEmail } from '@/app/components/email/templates/PasswordResetEmail';
 import { emailQueueService } from './emailQueueService';
 import { pdfService } from './pdfService';
+import { config } from '../config/env';
 
 export class EmailService extends EmailManager {
   private supabase = createClientComponentClient();
@@ -23,15 +24,16 @@ export class EmailService extends EmailManager {
     });
   }
 
+  private getRecipientEmail(email: string) {
+    return config.isProduction ? email : config.email.testEmail;
+  }
+
   async sendInvoiceEmail(invoice: Invoice, recipientEmail: string) {
     try {
       this.logEmailTrigger('invoice', recipientEmail, { invoiceId: invoice.id });
 
-      // DEVELOPMENT MODE: Using verified email for testing
-      const devEmail = 'prolifixs.pj@gmail.com'; // Your verified Resend email
-
       return this.queueEmail({
-        to: devEmail, // Use actual email instead of 'sent'
+        to: this.getRecipientEmail(recipientEmail),
         subject: `Invoice #${invoice.id} Ready for Review`,
         template: InvoiceEmail,
         props: {
@@ -46,7 +48,7 @@ export class EmailService extends EmailManager {
             quantity: item.quantity,
             price: item.unit_price
           })),
-          paymentLink: `/dashboard/invoices/${invoice.id}`,
+          paymentLink: `${config.app.url}/dashboard/invoices/${invoice.id}`,
           status: invoice.status
         },
         attachments: [{
@@ -56,44 +58,10 @@ export class EmailService extends EmailManager {
         metadata: {
           type: 'invoice',
           invoiceId: invoice.id,
-          priority: 'high'
+          priority: 'high',
+          environment: config.isProduction ? 'production' : 'development'
         }
       });
-
-      /* PRODUCTION MODE: Uncomment after domain verification on resend.com/domains
-      const isProd = process.env.NODE_ENV === 'production';
-      return this.queueEmail({
-        to: isProd 
-          ? `${invoice.request?.customer?.name} <${recipientEmail}>`
-          : 'prolifixs.pj@gmail.com', // Development fallback
-        subject: `Invoice #${invoice.id} Ready for Review`,
-        template: InvoiceEmail,
-        props: {
-          customerName: invoice.request?.customer?.name || 'Valued Customer',
-          customerEmail: recipientEmail,
-          invoiceNumber: invoice.id,
-          amount: invoice.amount,
-          dueDate: invoice.due_date,
-          createdAt: invoice.created_at,
-          items: invoice.invoice_items.map(item => ({
-            description: item.product.name,
-            quantity: item.quantity,
-            price: item.unit_price
-          })),
-          paymentLink: `/dashboard/invoices/${invoice.id}`,
-          status: invoice.status
-        },
-        attachments: [{
-          filename: `invoice-${invoice.id}.pdf`,
-          path: await pdfService.generateAndStore(invoice)
-        }],
-        metadata: {
-          type: 'invoice',
-          invoiceId: invoice.id,
-          priority: 'high'
-        }
-      });
-      */
     } catch (error) {
       console.error('Failed to send invoice email:', error);
       throw error;
