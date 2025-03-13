@@ -3,23 +3,19 @@ import { Invoice, RequestStatus } from '@/app/components/types/invoice'
 import { NotificationService } from '@/services/notificationService'
 import { config } from '../config/env'
 import Stripe from 'stripe'
+import { stripe } from '@/app/components/lib/stripe/server'
 
 export class PaymentService {
   private supabase = createClientComponentClient()
   private stripe: Stripe
 
   constructor() {
-    const stripeKey = config.isProduction 
-      ? process.env.STRIPE_LIVE_SECRET_KEY 
-      : process.env.STRIPE_TEST_SECRET_KEY;
-
-    if (!stripeKey) {
-      throw new Error(`Stripe ${config.isProduction ? 'live' : 'test'} key not configured`);
+    // Add validation check with fallback for development
+    if (!config.stripe.secretKey && process.env.NODE_ENV === 'production') {
+      throw new Error('Stripe test key not configured');
     }
     
-    this.stripe = new Stripe(stripeKey, {
-      apiVersion: '2025-02-24.acacia'
-    })
+    this.stripe = stripe
   }
 
   async createPaymentIntent(invoice: Invoice) {

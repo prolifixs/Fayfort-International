@@ -10,17 +10,17 @@ export const dynamic = 'force-dynamic';
 export const preferredRegion = 'iad1';
 
 export async function POST(request: NextRequest) {
-  const body = await request.text()
-  const signature = headers().get('stripe-signature')
-
-  if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json(
-      { error: 'Missing stripe signature or webhook secret' },
-      { status: 400 }
-    )
-  }
-
   try {
+    const body = await request.text()
+    const signature = headers().get('stripe-signature')
+
+    if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
+      return NextResponse.json(
+        { error: 'Missing signature or webhook secret' },
+        { status: 400 }
+      )
+    }
+
     const event = stripe.webhooks.constructEvent(
       body,
       signature,
@@ -30,27 +30,26 @@ export async function POST(request: NextRequest) {
     const supabase = createRouteHandlerClient({ cookies })
 
     switch (event.type) {
-      case 'payment_intent.succeeded':
-        const paymentIntent = event.data.object
-        const invoiceId = paymentIntent.metadata.invoice_id
-
-        // Update invoice status
-        await supabase
-          .from('invoices')
-          .update({ status: 'paid' })
-          .eq('id', invoiceId)
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as { metadata: { invoice_id?: string } }
+        if (paymentIntent.metadata.invoice_id) {
+          await supabase
+            .from('invoices')
+            .update({ status: 'paid' })
+            .eq('id', paymentIntent.metadata.invoice_id)
+        }
         break
-
-      case 'payment_intent.payment_failed':
-        const failedPaymentIntent = event.data.object
-        const failedInvoiceId = failedPaymentIntent.metadata.invoice_id
-
-        // Update invoice status
-        await supabase
-          .from('invoices')
-          .update({ status: 'failed' })
-          .eq('id', failedInvoiceId)
+      }
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as { metadata: { invoice_id?: string } }
+        if (paymentIntent.metadata.invoice_id) {
+          await supabase
+            .from('invoices')
+            .update({ status: 'failed' })
+            .eq('id', paymentIntent.metadata.invoice_id)
+        }
         break
+      }
     }
 
     return NextResponse.json({ received: true })

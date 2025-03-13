@@ -1,24 +1,42 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { stripe } from '@/app/components/lib/stripe/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia'
-});
+// Add route configurations
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
+
+// Add type for request
+interface CreateIntentRequest {
+  invoice: {
+    amount: number;
+    id?: string;
+  };
+}
 
 export async function POST(request: Request) {
   try {
-    const { invoice } = await request.json();
+    // Add error handling for JSON parsing
+    const body = await request.json().catch(() => ({})) as CreateIntentRequest;
+    const { invoice } = body;
 
-    // Use route handler client instead
+    if (!invoice?.amount) {
+      return NextResponse.json(
+        { error: 'Missing required invoice amount' },
+        { status: 400 }
+      );
+    }
+
     const supabase = createRouteHandlerClient({ cookies });
     
-    // Get session using route handler
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session?.user) {
       console.error('Session error:', sessionError);
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
     }
 
     const user = session.user;
@@ -40,6 +58,10 @@ export async function POST(request: Request) {
       currency: 'usd',
       customer: customer.id,
       payment_method_types: ['card'],
+      metadata: {
+        ...(invoice.id ? { invoiceId: invoice.id.toString() } : {}),
+        userEmail: user.email?.toString() ?? null
+      }
     });
 
     return NextResponse.json({
@@ -53,4 +75,18 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+// Add OPTIONS handler for CORS
+export async function OPTIONS() {
+  return NextResponse.json(
+    {},
+    {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    }
+  );
 } 

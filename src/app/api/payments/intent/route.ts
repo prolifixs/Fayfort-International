@@ -1,35 +1,42 @@
-import Stripe from 'stripe'
 import { NextResponse } from 'next/server'
+import { stripe } from '@/app/components/lib/stripe/server'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing Stripe secret key')
+// Add route configurations
+export const dynamic = 'force-dynamic'
+export const runtime = 'edge'
+
+interface PaymentIntentRequest {
+  amount: number;
+  invoice_id: string;
 }
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
-})
 
 export async function POST(request: Request) {
   try {
-    const { amount, invoice_id } = await request.json()
-    
-    // Create payment intent
+    const body = await request.json().catch(() => ({})) as PaymentIntentRequest;
+    const { amount, invoice_id } = body;
+
+    if (!amount) {
+      return NextResponse.json(
+        { error: 'Amount is required' },
+        { status: 400 }
+      );
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: Math.round(amount * 100),
       currency: 'usd',
       metadata: {
-        invoice_id,
+        invoice_id: invoice_id?.toString() ?? null
       },
-    })
+    });
 
-    return NextResponse.json({ clientSecret: paymentIntent.client_secret })
+    return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
-    console.error('Payment intent creation failed:', error)
+    console.error('Payment intent creation failed:', error);
     return NextResponse.json(
       { error: 'Payment intent creation failed' },
       { status: 500 }
-    )
+    );
   }
 }
 

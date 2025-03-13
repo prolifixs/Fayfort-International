@@ -1,6 +1,10 @@
 // Create a config file to centralize environment checks
 const getEnvVar = (key: string, defaultValue: string = ''): string => {
-  return process.env[key] || defaultValue;
+  const value = process.env[key] || defaultValue;
+  if (!value && process.env.NODE_ENV === 'production') {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -14,21 +18,13 @@ export const config = {
   },
   
   stripe: {
-    publicKey: getEnvVar(
-      isProduction 
-        ? 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' 
-        : 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'
-    ),
-    secretKey: getEnvVar(
-      isProduction 
-        ? 'STRIPE_LIVE_SECRET_KEY' 
-        : 'STRIPE_SECRET_KEY'
-    ),
-    webhookSecret: getEnvVar(
-      isProduction 
-        ? 'STRIPE_LIVE_WEBHOOK_SECRET' 
-        : 'STRIPE_WEBHOOK_SECRET'
-    ),
+    publicKey: getEnvVar('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'),
+    secretKey: isProduction 
+      ? getEnvVar('STRIPE_LIVE_SECRET_KEY')
+      : getEnvVar('STRIPE_SECRET_KEY'),
+    webhookSecret: isProduction
+      ? getEnvVar('STRIPE_LIVE_WEBHOOK_SECRET')
+      : getEnvVar('STRIPE_WEBHOOK_SECRET'),
     apiVersion: '2025-02-24.acacia' as const
   },
   
@@ -37,9 +33,7 @@ export const config = {
       ? 'noreply@fayfort.com'
       : 'test@fayfort.com',
     testEmail: 'prolifixs.pj@gmail.com',
-    resendKey: getEnvVar(
-      isProduction ? 'RESEND_LIVE_API_KEY' : 'RESEND_TEST_API_KEY'
-    )
+    resendKey: getEnvVar('RESEND_API_KEY')
   },
 
   supabase: {
@@ -49,20 +43,29 @@ export const config = {
   }
 };
 
-// Validate required environment variables
-const requiredVars = [
-  'NEXT_PUBLIC_APP_URL',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'RESEND_API_KEY',
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY'
-];
+// Define required vars based on environment
+const requiredVars = isProduction 
+  ? [
+      'NEXT_PUBLIC_APP_URL',
+      'STRIPE_LIVE_SECRET_KEY',
+      'STRIPE_LIVE_WEBHOOK_SECRET',
+      'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+    ]
+  : [
+      'NEXT_PUBLIC_APP_URL',
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+    ];
 
-requiredVars.forEach(varName => {
-  if (!process.env[varName]) {
-    throw new Error(`Missing required environment variable: ${varName}`);
-  }
-});
+// Only validate in production, or if explicitly requested
+if (process.env.NODE_ENV === 'production') {
+  requiredVars.forEach(varName => {
+    if (!process.env[varName]) {
+      throw new Error(`Missing required environment variable: ${varName}`);
+    }
+  });
+}
 
 export type Config = typeof config; 
