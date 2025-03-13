@@ -131,7 +131,7 @@ export interface Invoice {
   due_date: string
   created_at: string
   updated_at: string
-  status_updated_at: string
+  status_updated_at?: string
   payment_intent_id?: string
   pdf_url?: string
   invoice_items: InvoiceItem[]
