@@ -15,9 +15,7 @@ export const config = {
   
   stripe: {
     publicKey: getEnvVar('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'),
-    secretKey: getEnvVar(
-      isProduction ? 'STRIPE_SECRET_KEY' : 'STRIPE_SECRET_KEY'
-    ),
+    secretKey: getEnvVar('STRIPE_SECRET_KEY'),
     webhookSecret: getEnvVar('STRIPE_WEBHOOK_SECRET'),
     apiVersion: '2025-02-24.acacia' as const
   },
@@ -42,9 +40,9 @@ export const config = {
 // Validate required environment variables
 const requiredVars = [
   'NEXT_PUBLIC_APP_URL',
-  isProduction ? 'STRIPE_LIVE_SECRET_KEY' : 'STRIPE_TEST_SECRET_KEY',
-  isProduction ? 'STRIPE_LIVE_WEBHOOK_SECRET' : 'STRIPE_TEST_WEBHOOK_SECRET',
-  isProduction ? 'RESEND_LIVE_API_KEY' : 'RESEND_TEST_API_KEY',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'RESEND_API_KEY',
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY'
 ];
