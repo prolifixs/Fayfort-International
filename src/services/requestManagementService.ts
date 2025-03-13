@@ -16,7 +16,11 @@ export class RequestManagementService {
         await this.requestProcessor.processUnpaidRequest(requestId)
       }
       
-      await this.notificationService.sendStatusUpdateNotification(requestId, newStatus as RequestStatus)
+      await this.notificationService.sendStatusUpdateNotification(
+        requestId, 
+        newStatus as RequestStatus,
+        { previousStatus: 'pending' }
+      )
     } catch (error) {
       console.error('Status change error:', error)
       throw error
@@ -26,7 +30,11 @@ export class RequestManagementService {
   async handleResolution(requestId: string, resolution: string): Promise<void> {
     try {
       await this.updateResolutionStatus(requestId, resolution)
-      await this.notificationService.sendStatusUpdateNotification(requestId, resolution as RequestStatus)
+      await this.notificationService.sendStatusUpdateNotification(
+        requestId, 
+        resolution as RequestStatus,
+        { previousStatus: 'pending' }
+      )
     } catch (error) {
       console.error('Resolution error:', error)
       throw error

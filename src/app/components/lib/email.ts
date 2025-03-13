@@ -11,7 +11,10 @@ export async function sendInvoiceEmail(invoice: Invoice) {
   const [pdfBuffer, emailHtml] = await Promise.all([
     generateInvoicePDF({
       id: invoice.id,
-      status: invoice.status,
+      status: invoice.status === 'paid' ? 'paid' : 
+              invoice.status === 'sent' ? 'pending' : 
+              invoice.status === 'failed' ? 'overdue' : 
+              invoice.status === 'cancelled' ? 'cancelled' : 'draft',
       amount: invoice.amount,
       created_at: invoice.created_at,
       due_date: invoice.due_date,
@@ -24,7 +27,24 @@ export async function sendInvoiceEmail(invoice: Invoice) {
       } : { customer: { name: '', email: '' } },
       invoices: invoice.invoice_items
     }),
-    render(InvoiceEmail({ invoice, previewMode: false }))
+    render(InvoiceEmail({
+      customerName: invoice.request?.customer?.name || 'Valued Customer',
+      customerEmail: invoice.request?.customer?.email || 'no-reply@example.com',
+      invoiceNumber: invoice.id,
+      amount: invoice.amount,
+      dueDate: invoice.due_date,
+      createdAt: invoice.created_at,
+      items: invoice.invoice_items.map(item => ({
+        description: item.product.name,
+        quantity: item.quantity,
+        price: item.unit_price
+      })),
+      paymentLink: `/dashboard/invoices/${invoice.id}`,
+      status: invoice.status === 'paid' ? 'paid' : 
+              invoice.status === 'sent' ? 'pending' : 
+              invoice.status === 'failed' ? 'overdue' : 
+              invoice.status === 'cancelled' ? 'cancelled' : 'draft',
+    }))
   ])
   
   await emailQueueService.addToQueue({
@@ -40,11 +60,15 @@ export async function sendInvoiceEmail(invoice: Invoice) {
   })
 }
 
-export async function sendStatusChangeEmail(invoice: Invoice, previousStatus: 'draft' | 'sent' | 'paid' | 'cancelled') {
+export async function sendStatusChangeEmail(invoice: Invoice, previousStatus: 'pending' | 'approved' | 'rejected' | 'fulfilled' | 'shipped') {
   const emailHtml = await render(StatusChangeEmail({ 
-    invoice,
-    previousStatus, 
-    previewMode: false 
+    customerName: invoice.request?.customer?.name || 'Customer',
+    requestId: invoice.request_id,
+    previousStatus,
+    newStatus: invoice.status === 'paid' ? 'fulfilled' :
+               invoice.status === 'sent' ? 'approved' :
+               invoice.status === 'cancelled' ? 'rejected' : 'pending',
+    actionLink: `/dashboard/requests/${invoice.request_id}`
   }))
   
   await emailQueueService.addToQueue({
@@ -55,7 +79,10 @@ export async function sendStatusChangeEmail(invoice: Invoice, previousStatus: 'd
 }
 
 export async function sendWelcomeEmail(name: string, email: string) {
-  const emailHtml = await render(WelcomeEmail({ name, previewMode: false }))
+  const emailHtml = await render(WelcomeEmail({ 
+    userName: name,
+    verificationLink: '/verify' // Required by WelcomeEmailProps
+  }))
   
   await emailQueueService.addToQueue({
     to: email,

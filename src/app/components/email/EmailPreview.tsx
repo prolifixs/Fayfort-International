@@ -1,69 +1,63 @@
 'use client'
 
-import { useState } from 'react'
-import { InvoiceEmail } from './templates/InvoiceEmail'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog'
 import { Invoice } from '@/app/components/types/invoice'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { InvoiceEmail } from './templates/InvoiceEmail'
 
 interface EmailPreviewProps {
-  invoice: Invoice
-  open: boolean
+  isOpen: boolean
   onClose: () => void
-  onSend: () => Promise<void>
+  invoice: Invoice
 }
 
-export function EmailPreview({ invoice, open, onClose, onSend }: EmailPreviewProps) {
-  const [sending, setSending] = useState(false)
+export function EmailPreview({ isOpen, onClose, invoice }: EmailPreviewProps) {
+  if (!invoice) return null
 
-  const handleSend = async () => {
-    setSending(true)
-    try {
-      await onSend()
-      onClose()
-    } finally {
-      setSending(false)
-    }
-  }
+  // Transform invoice items to the format expected by InvoiceEmail
+  const invoiceItems = invoice.invoice_items?.map(item => ({
+    description: item.product?.name || 'Product',
+    quantity: item.quantity || 0,
+    price: item.unit_price || 0,
+    total: item.total_price || 0
+  })) || []
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Email Preview</DialogTitle>
+          <DialogTitle>
+            Email Preview - Invoice #{invoice.id}
+          </DialogTitle>
         </DialogHeader>
         <div className="border rounded-md p-4 bg-white">
           <InvoiceEmail
             customerName={invoice.request?.customer?.name || "Customer"}
+            customerEmail={invoice.request?.customer?.email || "customer@example.com"}
             invoiceNumber={invoice.id}
             amount={invoice.amount}
             dueDate={invoice.due_date}
-            items={invoice.invoice_items.map(item => ({
-              description: item.product.name,
-              quantity: item.quantity,
-              price: item.unit_price
-            }))}
-            paymentLink={`${process.env.NEXT_PUBLIC_APP_URL}/invoice/${invoice.id}`}
-            status={invoice.status === 'paid' ? 'paid' : 
-                   invoice.status === 'sent' ? 'pending' : 
-                   invoice.status === 'failed' ? 'overdue' : 'pending'}
+            createdAt={invoice.created_at}
+            items={invoiceItems}
+            paymentLink={`/dashboard/invoices/${invoice.id}`}
+            status={invoice.status as "draft" | "pending" | "paid" | "overdue" | "cancelled"}
+            companyName="Fayfort Enterprise"
+            companyLogo="/images/logo.png" // Optional: Add your logo path
           />
         </div>
-        <div className="flex justify-end space-x-3 mt-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={sending}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {sending ? 'Sending...' : 'Send Email'}
-          </button>
+        <div className="mt-4 text-sm text-gray-500">
+          <p>This is a preview of the email that will be sent to the customer.</p>
+          {invoice.status === 'draft' && (
+            <p className="mt-2 text-amber-600">
+              Note: This invoice is still in draft status. The email will be sent when the invoice is finalized.
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   )
+}
+
+// Add debug logging if needed
+if (process.env.NODE_ENV === 'development') {
+  EmailPreview.displayName = 'EmailPreview'
 } 

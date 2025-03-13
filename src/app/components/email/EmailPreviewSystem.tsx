@@ -56,9 +56,11 @@ export function EmailPreviewSystem({ open, onClose, data }: EmailPreviewSystemPr
               {data.invoice && (
                 <InvoiceEmail
                   customerName={data.invoice.request?.customer?.name || "Customer"}
+                  customerEmail={data.invoice.request?.customer?.email || "customer@example.com"}
                   invoiceNumber={data.invoice.id}
                   amount={data.invoice.amount}
                   dueDate={data.invoice.due_date}
+                  createdAt={data.invoice.created_at}
                   items={data.invoice.invoice_items.map(item => ({
                     description: item.product.name,
                     quantity: item.quantity,
