@@ -36,7 +36,8 @@ const nextConfig = {
     domains: [
       'uxbakpeeqydatgvdyaa.supabase.co',
       'img.youtube.com',
-      'i.vimeocdn.com'
+      'i.vimeocdn.com',
+      'https://www.fayfort.com'
     ],
     remotePatterns: [
       {
@@ -44,6 +45,10 @@ const nextConfig = {
         hostname: '**.supabase.co',
       }
     ]
+  },
+  output: 'standalone',
+  experimental: {
+    outputStandalone: true,
   },
 }
 

@@ -74,4 +74,6 @@ export default function RequestsPage() {
       </div>
     </div>
   )
-} 
+}
+
+export const dynamic = 'force-dynamic' 

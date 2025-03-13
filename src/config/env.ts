@@ -14,9 +14,21 @@ export const config = {
   },
   
   stripe: {
-    publicKey: getEnvVar('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'),
-    secretKey: getEnvVar('STRIPE_SECRET_KEY'),
-    webhookSecret: getEnvVar('STRIPE_WEBHOOK_SECRET'),
+    publicKey: getEnvVar(
+      isProduction 
+        ? 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' 
+        : 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'
+    ),
+    secretKey: getEnvVar(
+      isProduction 
+        ? 'STRIPE_LIVE_SECRET_KEY' 
+        : 'STRIPE_SECRET_KEY'
+    ),
+    webhookSecret: getEnvVar(
+      isProduction 
+        ? 'STRIPE_LIVE_WEBHOOK_SECRET' 
+        : 'STRIPE_WEBHOOK_SECRET'
+    ),
     apiVersion: '2025-02-24.acacia' as const
   },
   
