@@ -1,10 +1,15 @@
 import { stripe } from '@/app/components/lib/stripe/server'
 import { headers } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
-export async function POST(request: Request) {
+// New way to configure API routes in App Router
+export const runtime = 'edge'; // optional
+export const dynamic = 'force-dynamic';
+export const preferredRegion = 'iad1';
+
+export async function POST(request: NextRequest) {
   const body = await request.text()
   const signature = headers().get('stripe-signature')
 
@@ -56,10 +61,4 @@ export async function POST(request: Request) {
       { status: 400 }
     )
   }
-}
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
 } 
