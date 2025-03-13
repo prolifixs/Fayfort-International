@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { NextResponse } from 'next/server'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing Stripe secret key')
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-02-24.acacia',
   typescript: true,
 })
@@ -31,4 +31,8 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+}
+
+export async function GET(request: Request) {
+  // Your GET logic if needed
 } 
