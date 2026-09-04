@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
 import { ArrowDown, ArrowRight, BadgeDollarSign, BookOpen, Boxes, Building2, Check, CheckCheck, ClipboardCheck, Clock3, CreditCard, Factory, Globe2, Headphones, Landmark, Map, MapPin, MessageCircle, PackageCheck, PackageSearch, Plane, Play, SearchCheck, Ship, ShieldCheck, Smartphone, Volume2, X } from 'lucide-react'
+import ShopifyBuyButton from './components/ShopifyBuyButton'
 
 const manufacturerConversation = [
   { side: 'buyer', label: 'You · 09:12', text: 'Are you the manufacturer of this product, or a trading company?', note: 'Ask directly. Never infer from the booth or product photos.' },
@@ -165,7 +166,7 @@ export default function Home() {
         <section className="buy-section" id="get-it" ref={purchaseRef}><div className="shell section-space">
           <div className="section-kicker light"><span>06</span><p>Choose your edition</p></div><div className="buy-heading"><h2>Start where you are.</h2><p>Ebook, paperback, and audiobook options for readers in Africa and everywhere else.</p></div>
           <div className="buy-grid">
-            <motion.article className="buy-card featured patterned-card" {...reveal} whileHover={reduceMotion ? undefined : { y: -12, rotate: -.5 }}><CardPattern type="africa" /><div className="card-content"><div className="card-top"><span>For Nigeria & Africa</span><small>Direct purchase</small></div><h3>Pay locally.<br />Read immediately.</h3><p>Use a card or bank transfer in naira. Your ebook download arrives after checkout.</p><div className="price"><small>Price</small><strong>To be announced</strong></div><a className="button button-light disabled-link" href="#purchase-details">Purchase link coming soon <ArrowRight size={17} /></a></div></motion.article>
+            <motion.article className="buy-card featured patterned-card" {...reveal} whileHover={reduceMotion ? undefined : { y: -12, rotate: -.5 }}><CardPattern type="africa" /><div className="card-content"><div className="card-top"><span>For Nigeria & Africa</span><small>Direct purchase</small></div><h3>Pay locally.<br />Read immediately.</h3><p>Use a card or bank transfer in naira. Your ebook download arrives after checkout.</p><ShopifyBuyButton /></div></motion.article>
             <motion.article className="buy-card patterned-card" {...reveal} transition={{ ...reveal.transition, delay: .1 }} whileHover={reduceMotion ? undefined : { y: -12, rotate: .5 }}><CardPattern type="global" /><div className="card-content"><div className="card-top"><span>For everywhere else</span><small>Amazon</small></div><h3>Kindle &<br />paperback.</h3><p>Choose a digital or printed copy and purchase through your local Amazon store.</p><div className="price"><small>Price</small><strong>To be announced</strong></div><a className="button button-outline disabled-link" href="#purchase-details">Amazon link coming soon <ArrowRight size={17} /></a></div></motion.article>
           </div>
           <div className="audio-player" id="purchase-details">
