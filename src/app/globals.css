@@ -19,6 +19,8 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 82px; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+.route-loading { animation: route-pulse 1s ease-in-out infinite alternate; background: var(--rust); height: 3px; left: 0; position: fixed; right: 55%; top: 0; z-index: 100; }
+@keyframes route-pulse { to { opacity: .35; right: 0; } }
 a { color: inherit; text-decoration: none; }
 button { color: inherit; font: inherit; }
 p, h1, h2, h3, blockquote { margin-top: 0; }
