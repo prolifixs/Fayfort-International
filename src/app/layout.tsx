@@ -1,39 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
-import ClientLayout from './components/common/ClientLayout'
-import { ErrorBoundary } from '@/app/components/common/error/ErrorBoundary'
-import { Suspense } from 'react'
-import { InvoiceSkeleton } from '@/app/components/common/loading/InvoiceSkeleton'
-import { Toaster } from "@/app/components/ui/toaster"
-import { StripeProvider } from '@/app/providers/StripeProvider'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Fayfort Enterprise - Catalog Portfolio',
-  description: 'Your trusted business partner for product sourcing',
+  title: 'Landed — Sourcing at the Canton Fair and Beyond | FayFay',
+  description: 'The practical guide to buying from Chinese factories, verifying suppliers, shipping goods, and calculating your true landed cost.',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="en">
-      <body className={inter.className}>
-        <ErrorBoundary>
-          <Suspense fallback={<InvoiceSkeleton />}>
-            <StripeProvider>
-              <ClientLayout>
-                {children}
-              </ClientLayout>
-            </StripeProvider>
-          </Suspense>
-        </ErrorBoundary>
-        <Toaster />
-      </body>
-    </html>
-  )
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="en"><body>{children}</body></html>
 }

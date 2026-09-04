@@ -4,6 +4,37 @@ import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
+
+  const publicRoutes = [
+    '/',
+    '/login',
+    '/register',
+    '/reset-password',
+    '/auth/callback',
+    '/check-email',
+    '/verify-email'
+  ]
+  const isPublicRoute = publicRoutes.some(route =>
+    req.nextUrl.pathname === route ||
+    req.nextUrl.pathname.startsWith('/api/auth/')
+  )
+
+  const hasSupabaseConfig = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
+
+  // Public pages can be previewed locally without application credentials.
+  // Protected pages remain protected and route to login until configured.
+  if (!hasSupabaseConfig) {
+    if (isPublicRoute) return res
+
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = '/login'
+    redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname)
+    return NextResponse.redirect(redirectUrl)
+  }
+
   const supabase = createMiddlewareClient({ req, res })
 
   const debugMiddleware = (message: string, data?: any) => {
@@ -24,21 +55,6 @@ export async function middleware(req: NextRequest) {
       const redirectTo = session.user.user_metadata?.role === 'admin' ? '/admin' : '/dashboard';
       return NextResponse.redirect(new URL(redirectTo, req.url));
     }
-
-    // Define public routes that don't require authentication
-    const publicRoutes = [
-      '/',
-      '/login',
-      '/register',
-      '/reset-password',
-      '/auth/callback',
-      '/check-email',
-      '/verify-email'
-    ]
-    const isPublicRoute = publicRoutes.some(route => 
-      req.nextUrl.pathname === route || 
-      req.nextUrl.pathname.startsWith('/api/auth/')
-    )
 
     // Always allow static files and public routes
     if (
