@@ -6,11 +6,14 @@ import { ArrowDown, ArrowRight, BadgeDollarSign, BookOpen, Boxes, Building2, Che
 import ShopifyBuyButton from './components/ShopifyBuyButton'
 
 const manufacturerConversation = [
-  { side: 'buyer', label: 'You · 09:12', text: 'Are you the manufacturer of this product, or a trading company?', note: 'Ask directly. Never infer from the booth or product photos.' },
-  { side: 'supplier', label: 'Manufacturer · 09:14', text: 'We manufacture it. Our factory is in Foshan and we have three production lines.', note: 'A confident answer is useful—but it is not verification.' },
-  { side: 'buyer', label: 'You · 09:16', text: 'Please send your business licence, factory address, recent production video, and the name on the receiving bank account.', note: 'Specific requests make vague suppliers reveal themselves quickly.' },
-  { side: 'supplier', label: 'Manufacturer · 09:22', text: 'Sent. You are also welcome to inspect the factory before placing the order.', note: 'Cross-check the company name, address, licence, and payment beneficiary.' },
-  { side: 'buyer', label: 'You · 09:28', text: 'Good. Quote 500 and 1,000 units separately, with packaging, lead time, payment terms, and FOB price.', note: 'Put every commercial variable in writing before negotiating.' },
+  { side: 'buyer', label: 'You · 09:12', text: 'What’s the lead time — production and delivery, separately?', note: 'A factory knows its lead time the way you know your own phone number. A reseller has to go and ask.' },
+  { side: 'supplier', label: 'Manufacturer · 09:14', text: 'Production takes about three weeks. Shipping adds another twelve to fifteen days.', note: 'Immediate and specific is what you’re listening for — not just the number itself.' },
+  { side: 'buyer', label: 'You · 09:17', text: 'And what’s your minimum order quantity?', note: 'Ask before you get attached to the product. You can’t negotiate a minimum you haven’t heard yet.' },
+  { side: 'supplier', label: 'Manufacturer · 09:19', text: '500 units per colourway. It can flex for repeat orders.', note: 'Chapter Six, Question Two — heard before price, every time.' },
+  { side: 'buyer', label: 'You · 09:24', text: 'Do you make this yourself, or do you buy it from a factory?', note: '“SAY THIS” — exact line from Chapter Six. A manufacturer answers fluently, usually with some pride.' },
+  { side: 'supplier', label: 'Manufacturer · 09:26', text: 'We manufacture it ourselves — three production lines in Foshan.', note: 'Someone who has to construct an answer has told you what you needed to know.' },
+  { side: 'buyer', label: 'You · 09:30', text: 'What goes wrong most often with this product?', note: 'The best question in the book. “Nothing goes wrong” means they don’t run production.' },
+  { side: 'supplier', label: 'Manufacturer · 09:33', text: 'Honestly — the zipper pull. We switched that component twice last year.', note: 'Specific and slightly weary. That’s someone who has actually lived with the product.' },
 ]
 
 const faqs = [
@@ -80,7 +83,7 @@ export default function Home() {
       <header className="site-header"><div className="shell header-inner">
         <a className="brand" href="#top" aria-label="Landed home"><span className="brand-mark">L</span><span><strong>LANDED</strong><small>by FayFay</small></span></a>
         <nav className="desktop-nav" aria-label="Main navigation"><a href="#inside">Inside the book</a><a href="#author">About FayFay</a><a href="#questions">Questions</a></nav>
-        <a className="header-cta" href="#get-it">Get the book <ArrowRight size={15} /></a>
+        <a className="header-cta" href="https://8kjjz9-ei.myshopify.com/products/landed" target="_blank" rel="noreferrer">Get the book <ArrowRight size={15} /></a>
       </div></header>
 
       <div id="content">
@@ -89,7 +92,7 @@ export default function Home() {
             <p className="overline"><span /> The independent China sourcing guide</p>
             <h1>Buy from China.<br />Land it <em>profitably.</em></h1>
             <p className="hero-lede">A practical field guide to the Canton Fair, Chinese factories, supplier checks, negotiation, shipping—and the real cost when your goods finally land.</p>
-            <div className="hero-actions"><a className="button button-primary" href="#get-it">Get the book <ArrowRight size={17} /></a><a className="text-button" href="#sample">Read a sample <ArrowDown size={15} /></a></div>
+            <div className="hero-actions"><a className="button button-primary" href="https://8kjjz9-ei.myshopify.com/products/landed" target="_blank" rel="noreferrer">Get the book <ArrowRight size={17} /></a><a className="text-button" href="#sample">Read a sample <ArrowDown size={15} /></a></div>
             <div className="hero-proof" aria-label="Book details"><span><strong>27</strong> focused chapters</span><span><strong>3</strong> available formats</span><span><strong>2026</strong> field-ready edition</span></div>
           </motion.div>
           <motion.div className="cover-scene" aria-label="Landed book cover preview" initial={reduceMotion ? false : { opacity: 0, y: 45, rotate: -3 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ delay: .12, duration: .9, ease: [0.22, 1, 0.36, 1] }}>
@@ -131,7 +134,7 @@ export default function Home() {
 
         <section className="contents-section" id="inside"><div className="shell section-space">
           <div className="section-kicker"><span>04</span><p>A communication field guide</p></div>
-          <div className="contents-heading"><h2>Talk like a buyer.<br /><em>Verify like an inspector.</em></h2><p>A view-only example of how a useful manufacturer conversation develops.</p></div>
+          <div className="contents-heading"><h2>Talk like a buyer.<br /><em>Verify like an inspector.</em></h2><p>A view-only example built on Chapter Six’s Three Questions — lead time, minimum order, and the two lines the book calls out to ask by name.</p></div>
           <div className="chapter-thread">
             <div className="thread-header"><span className="thread-avatar"><Factory size={18} /></span><div><strong>Guangzhou Manufacturer</strong><small><i /> Typical response time: a few minutes</small></div><span className="thread-status">VIEW ONLY</span></div>
             <div className="chapter-list">{manufacturerConversation.map((message, index) => (
@@ -157,9 +160,9 @@ export default function Home() {
           <div className="sample-grid"><div className="sample-intro"><h2>Don’t take our word for it. <em>Read the pages.</em></h2><p>Two short passages that show exactly how direct—and specific—the book is.</p></div>
             <motion.article className="excerpt-card warm" {...reveal} whileHover={reduceMotion ? undefined : { rotate: -2.4, y: -12 }}>
               <CardPattern type="fair" />
-              <div className="excerpt-content"><span>Chapter 03 · The three phases</span><h3>The fair is not one event. It is three.</h3><p>And if you book the wrong one, the people you flew to meet will not be in the building.</p><p>Not hard to find. Not busy. Not there.</p><p>I want to deal with this early, because it is the most expensive mistake a first-time buyer makes—and it is entirely avoidable.</p></div>
+              <div className="excerpt-content"><span>Chapter 01 · What Happened at the Last Canton Fair</span><h3>A minimum order of ten thousand pieces, per colour, per design, is normal at fair level. Not extreme. Normal.</h3><p>Take a modest garment at four dollars. Ten thousand pieces in three colours is a hundred and twenty thousand dollars — before freight, before duty, before you have sold one unit.</p><p>The fair is Plan A. Most people need Plan B, and nobody hands them one.</p></div>
             </motion.article>
-            <motion.article className="excerpt-card ink" {...reveal} transition={{ ...reveal.transition, delay: .1 }} whileHover={reduceMotion ? undefined : { rotate: 2.4, y: -12 }}><CardPattern type="inspection" /><div className="excerpt-content"><span>Chapter 23 · Inspect before you pay</span><h3>Do not pay the balance until somebody you trust has opened the cartons.</h3><p>Your deposit buys production. That is all it buys. The balance is the only leverage you have left.</p><p>The moment you release it, you have no leverage at all—only a dispute conducted at distance.</p></div></motion.article>
+            <motion.article className="excerpt-card ink" {...reveal} transition={{ ...reveal.transition, delay: .1 }} whileHover={reduceMotion ? undefined : { rotate: 2.4, y: -12 }}><CardPattern type="inspection" /><div className="excerpt-content"><span>Chapter 02 · The Markets Nobody Told You About</span><h3>Be careful of any market list with no dates and no Chinese characters.</h3><p>Markets move. Stalls change hands. Buildings get redeveloped and whole trades relocate. A list that does not say when it was compiled is telling you it does not know either.</p><p>You do not find out which one is wrong at your desk. You find out in a taxi.</p></div></motion.article>
           </div>
         </section>
 
@@ -191,14 +194,14 @@ export default function Home() {
 
         <section className="deadline-section"><div className="shell deadline-grid"><p className="section-index">The next window</p><h2>The next Canton Fair opens <em>15 October 2026.</em></h2><div><p>It runs in three phases through 4 November. Visa application windows are fixed and vary by location—confirm yours before making travel plans.</p><small>Fair dates and visa guidance must be verified against official sources before launch.</small></div></div></section>
 
-        <section className="final-cta shell"><p className="overline"><span /> Your next move</p><h2>Go prepared.</h2><p>The trip costs thousands. The book costs less than lunch. Make this the last decision you take without knowing what comes next.</p><a className="button button-primary" href="#get-it">Choose your edition <ArrowRight size={17} /></a></section>
+        <section className="final-cta shell"><p className="overline"><span /> Your next move</p><h2>Go prepared.</h2><p>The trip costs thousands. The book costs less than lunch. Make this the last decision you take without knowing what comes next.</p><a className="button button-primary" href="https://8kjjz9-ei.myshopify.com/products/landed" target="_blank" rel="noreferrer">Choose your edition <ArrowRight size={17} /></a></section>
       </div>
 
       <footer className="site-footer"><div className="shell footer-main"><div><a className="brand footer-brand" href="#top"><span className="brand-mark">L</span><span><strong>LANDED</strong><small>by FayFay</small></span></a><p>A practical field guide to buying from China and bringing your goods home.</p></div><div><span>Explore</span><a href="#inside">Inside the book</a><a href="#sample">Read a sample</a><a href="#author">About FayFay</a></div><div><span>Follow</span><p>Instagram and TikTok links will be added before launch.</p></div></div><div className="shell footer-bottom"><p>© 2026 FAYFORT International Trading</p><p>General information only. Not legal, immigration, tax, or financial advice.</p></div></footer>
       <AnimatePresence>
         {showMobileCta && <motion.a
           className="mobile-buy"
-          href="#get-it"
+          href="https://8kjjz9-ei.myshopify.com/products/landed" target="_blank" rel="noreferrer"
           initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 70 }}
           animate={{ opacity: 1, y: 0 }}
           exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 70 }}
