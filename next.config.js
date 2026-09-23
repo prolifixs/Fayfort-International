@@ -1,13 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Placeholder fallbacks so the build never crashes for missing credentials —
+  // real backend wiring (Stripe/Supabase) is deferred to the later ERP/CRM pass.
+  // Replace these with real values (locally or on Vercel) whenever that happens.
   env: {
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://www.fayfort.com',
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder',
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || 'whsec_placeholder',
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key',
   },
   webpack: (config, { isServer }) => {
     // Add PDF handling from .ts config
@@ -41,7 +44,7 @@ const nextConfig = {
       'uxbakpeeqydatgvdyaa.supabase.co',
       'img.youtube.com',
       'i.vimeocdn.com',
-      'https://www.fayfort.com'
+      'www.fayfort.com'
     ],
     remotePatterns: [
       {
@@ -51,6 +54,21 @@ const nextConfig = {
     ]
   },
   output: 'standalone',
+  async rewrites() {
+    // FaySource isn't deployed anywhere yet — set FAYSOURCE_ZONE_URL once it is.
+    // Until then, /products/fay serves the placeholder page instead. beforeFiles
+    // means the real proxy will correctly take over from the placeholder the
+    // moment this env var is set, with no further code changes needed.
+    const faysourceZone = process.env.FAYSOURCE_ZONE_URL;
+    if (!faysourceZone) return { beforeFiles: [] };
+
+    return {
+      beforeFiles: [
+        { source: '/products/fay', destination: `${faysourceZone}/products/fay` },
+        { source: '/products/fay/:path*', destination: `${faysourceZone}/products/fay/:path*` },
+      ],
+    };
+  },
 }
 
 module.exports = nextConfig 

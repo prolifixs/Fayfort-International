@@ -12,10 +12,14 @@ export async function middleware(req: NextRequest) {
     '/reset-password',
     '/auth/callback',
     '/check-email',
-    '/verify-email'
+    '/verify-email',
+    '/ebook/landed',
+    '/products/fay'
   ]
   const isPublicRoute = publicRoutes.some(route =>
     req.nextUrl.pathname === route ||
+    req.nextUrl.pathname.startsWith('/ebook/landed/') ||
+    req.nextUrl.pathname.startsWith('/products/fay/') ||
     req.nextUrl.pathname.startsWith('/api/auth/')
   )
 

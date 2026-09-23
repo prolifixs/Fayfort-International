@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/app/components/types/database.types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uxbakpeeqydatgvvdyaa.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-anon-key-for-local-dev'
 
 if (!supabaseUrl) throw new Error('Missing Supabase URL')
 if (!supabaseAnonKey) throw new Error('Missing Supabase Anon Key')
@@ -22,7 +22,7 @@ export const supabase = createClientComponentClient<Database>({
 })
 
 // Create admin client with service role key for administrative operations
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'dummy-service-role-key-for-local-dev'
 if (!serviceRoleKey) {
   throw new Error('Missing Supabase Service Role Key')
 }

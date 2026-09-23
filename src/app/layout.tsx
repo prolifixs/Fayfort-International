@@ -8,8 +8,8 @@ import { ErrorBoundary } from '@/app/components/common/error/ErrorBoundary'
 import { Toaster } from '@/app/components/ui/toaster'
 
 export const metadata: Metadata = {
-  title: 'Landed — Sourcing at the Canton Fair and Beyond | FayFay',
-  description: 'The practical guide to buying from Chinese factories, verifying suppliers, shipping goods, and calculating your true landed cost.',
+  title: 'Fayfort International',
+  description: 'Fayfort International Trading — sourcing, catalog, and trade services.',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
