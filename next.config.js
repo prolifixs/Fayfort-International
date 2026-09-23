@@ -55,11 +55,11 @@ const nextConfig = {
   },
   output: 'standalone',
   async rewrites() {
-    // FaySource isn't deployed anywhere yet — set FAYSOURCE_ZONE_URL once it is.
-    // Until then, /products/fay serves the placeholder page instead. beforeFiles
-    // means the real proxy will correctly take over from the placeholder the
-    // moment this env var is set, with no further code changes needed.
-    const faysourceZone = process.env.FAYSOURCE_ZONE_URL;
+    // FaySource is live at faysource-nine.vercel.app (already built with a
+    // matching /products/fay basePath). Defaulting to it here means this works
+    // without needing Vercel dashboard access to set an env var — override
+    // FAYSOURCE_ZONE_URL later if it ever moves to a different deployment.
+    const faysourceZone = process.env.FAYSOURCE_ZONE_URL || 'https://faysource-nine.vercel.app';
     if (!faysourceZone) return { beforeFiles: [] };
 
     return {
