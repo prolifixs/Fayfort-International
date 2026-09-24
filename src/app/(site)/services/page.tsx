@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SOURCING_ENQUIRY_URL, SUPPORT_EMAIL } from '@/config/contact'
-import { PageHero } from '../components'
+import { PageHero, revealDelay } from '../components'
 
 export const metadata: Metadata = {
   title: 'Services | FAYFORT International Trading',
@@ -99,19 +99,19 @@ export default function ServicesPage() {
     <>
       <PageHero kicker="Services" title={<>From first enquiry to <em>delivered container.</em></>} lede="Everything below can be taken on its own, or as one job from first enquiry to delivered container." />
 
-      <nav className="shell service-index" aria-label="Services on this page">
+      <nav className="shell service-index" aria-label="Services on this page" data-reveal="fade" style={revealDelay(3)}>
         {services.map((service) => <a key={service.id} href={`#${service.id}`}>{service.title.split(' — ')[0]}</a>)}
       </nav>
 
       <div className="shell service-list">
         {services.map((service, index) => (
           <section className="service-block" id={service.id} key={service.id}>
-            <div className="service-head">
+            <div className="service-head" data-reveal>
               <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
               <h2>{service.title}</h2>
               <p className="service-lead">{service.lead}</p>
             </div>
-            <div className="service-body prose">
+            <div className="service-body prose" data-reveal style={revealDelay(1)}>
               {service.intro && <p>{service.intro}</p>}
               {service.label && <p className="mini-label">{service.label}</p>}
               <ul>{service.items.map(([term, text]) => <li key={text}>{term && <strong>{term} — </strong>}{text}</li>)}</ul>
@@ -122,12 +122,12 @@ export default function ServicesPage() {
       </div>
 
       <section className="dark-section"><div className="shell section-space">
-        <div className="section-kicker light"><p>How it works</p></div>
-        <ol className="steps">{steps.map(([title, copy], index) => <li key={title}><span>{index + 1}</span><strong>{title}</strong><p>{copy}</p></li>)}</ol>
+        <div className="section-kicker light" data-reveal><p>How it works</p></div>
+        <ol className="steps">{steps.map(([title, copy], index) => <li key={title} data-reveal style={revealDelay(index)}><span>{index + 1}</span><strong>{title}</strong><p>{copy}</p></li>)}</ol>
       </div></section>
 
       <div className="shell prose-page">
-        <section className="prose">
+        <section className="prose" data-reveal>
           <h2>Pricing</h2>
           <p><strong>Every quote is broken out.</strong> Goods here, freight there, inspection separately. Anyone who’ll only give you one bundled number is telling you where their margin is.</p>
 
@@ -141,7 +141,7 @@ export default function ServicesPage() {
           </ul>
         </section>
 
-        <section className="cta-panel">
+        <section className="cta-panel" data-reveal="zoom">
           <h2>Start a job</h2>
           <p>Tell us the product, the quantity and the destination. That’s enough for a first answer.</p>
           <div className="cta-actions">

@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the site pages' reveal boot script adds a class to <html> before hydration.
+    <html lang="en" suppressHydrationWarning>
       <body>
         <ErrorBoundary>
           <Suspense fallback={<div className="route-loading" aria-label="Loading" />}>

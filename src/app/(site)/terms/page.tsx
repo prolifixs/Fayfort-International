@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SUPPORT_EMAIL } from '@/config/contact'
-import { DraftBanner, PageHero, Tbc } from '../components'
+import { DraftBanner, PageHero, Tbc, revealDelay } from '../components'
 
 export const metadata: Metadata = {
   title: 'Terms and Conditions | FAYFORT International Trading',
@@ -16,7 +16,7 @@ export default function TermsPage() {
       <PageHero kicker="Legal" title="Terms and Conditions" lede={<>Last updated: <Tbc>date</Tbc></>} />
       <div className="shell prose-page legal">
         <DraftBanner />
-        <article className="prose">
+        <article className="prose" data-reveal="fade" style={revealDelay(3)}>
           <p>These terms govern your use of this website and any sourcing, inspection, consolidation or shipping services provided by FAYFORT International Trading.</p>
           <p>Separate terms apply to our books and directory subscriptions. See <Link href="/terms-ebooks">Ebook and Directory Terms</Link>.</p>
 

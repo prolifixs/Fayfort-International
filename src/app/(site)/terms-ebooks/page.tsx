@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SUPPORT_EMAIL } from '@/config/contact'
 import { PRICE_USD, formatPrice } from '../../ebook/landed/config'
-import { DraftBanner, PageHero, Tbc } from '../components'
+import { DraftBanner, PageHero, Tbc, revealDelay } from '../components'
 
 export const metadata: Metadata = {
   title: 'Ebook and Directory Terms | LANDED',
@@ -17,7 +17,7 @@ export default function EbookTermsPage() {
       <PageHero kicker="Legal" title="Ebook and Directory Terms" lede={<>Last updated: <Tbc>date</Tbc></>} />
       <div className="shell prose-page legal">
         <DraftBanner />
-        <article className="prose">
+        <article className="prose" data-reveal="fade" style={revealDelay(3)}>
           <p>These terms apply to our books and directory access — <strong>LANDED</strong>, and access to the <strong>FaySource</strong> directory. They apply alongside our <Link href="/terms">general Terms and Conditions</Link>. Where the two differ on anything to do with our books or directory, these terms apply.</p>
 
           <h2 id="licence">1. What you are buying</h2>

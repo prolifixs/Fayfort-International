@@ -40,6 +40,10 @@ p, h1, h2, h3, blockquote { margin-top: 0; }
 .header-inner { align-items: center; display: flex; height: 76px; justify-content: space-between; }
 .brand { align-items: center; display: inline-flex; gap: 11px; }
 .brand-mark { align-items: center; background: var(--pink); color: var(--paper); display: flex; font-family: var(--serif); font-size: 22px; font-style: italic; height: 36px; justify-content: center; width: 36px; }
+.brand-logo { display: block; flex: 0 0 auto; height: 40px; }
+.brand-logo img { display: block; height: 100%; width: auto; }
+.footer-brand .brand-logo { background: var(--paper); border-radius: 8px; height: 48px; padding: 6px; }
+.footer-brand small { color: #a3a3a3; }
 .brand > span:last-child { display: flex; flex-direction: column; }
 .brand strong { font-size: 12px; letter-spacing: .18em; line-height: 1.1; }
 .brand small { color: var(--muted); font-family: var(--serif); font-size: 10px; font-style: italic; }
@@ -379,6 +383,39 @@ h1 em, h2 em { color: var(--pink); font-weight: 400; }
 .contact-list a { border-bottom: 1px solid var(--line); transition: border-color .2s, color .2s; }
 .contact-list a:hover { border-color: var(--blue); color: var(--blue); }
 
+/* Motion on the FAYFORT pages. [data-reveal] elements are hidden only after the boot script
+   has added html.reveal-on, so visitors without JavaScript see everything; nothing moves for
+   people who ask for reduced motion. Reveals animate translate/scale/opacity, never transform,
+   so they compose with hover effects that use transform. */
+.hub-portrait { --frame-color: var(--blue); --frame-offset: 20px; }
+.about-portrait { --frame-color: var(--pink); --frame-offset: 18px; }
+@keyframes reveal-rise { from { opacity: 0; translate: 0 28px; } to { opacity: 1; translate: 0 0; } }
+@keyframes reveal-left { from { opacity: 0; translate: -24px 0; } to { opacity: 1; translate: 0 0; } }
+@keyframes reveal-zoom { from { opacity: 0; scale: .94; } to { opacity: 1; scale: 1; } }
+@keyframes reveal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes frame-out { from { box-shadow: 0 0 0 var(--frame-color); } to { box-shadow: var(--frame-offset) var(--frame-offset) 0 var(--frame-color); } }
+@keyframes flutter { 0%, 40%, 80%, 100% { transform: scaleX(1); } 20% { transform: scaleX(.3); } 60% { transform: scaleX(.55); } }
+@keyframes ink-in { from { filter: blur(8px); opacity: 0; } to { filter: blur(0); opacity: 1; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-on [data-reveal]:not(.is-visible) { opacity: 0; }
+  .reveal-on [data-reveal].is-visible { animation: reveal-rise .85s cubic-bezier(.22, 1, .36, 1) var(--reveal-delay, 0ms) both; }
+  .reveal-on [data-reveal="left"].is-visible { animation-name: reveal-left; }
+  .reveal-on [data-reveal="zoom"].is-visible { animation-name: reveal-zoom; }
+  .reveal-on [data-reveal="fade"].is-visible { animation-name: reveal-fade; }
+
+  /* Homepage signature: the butterfly flutters, the blue phrase inks in, the portrait's frame slides out. */
+  .reveal-on .hub-name.is-visible .hub-butterfly { animation: flutter 1.2s ease-in-out .35s both; }
+  .reveal-on .hub-hero h1.is-visible em { animation: ink-in .75s cubic-bezier(.22, 1, .36, 1) .3s both; }
+  .reveal-on .hub-portrait.is-visible, .reveal-on .about-portrait.is-visible {
+    animation: reveal-zoom .85s cubic-bezier(.22, 1, .36, 1) var(--reveal-delay, 0ms) both, frame-out .7s cubic-bezier(.22, 1, .36, 1) calc(var(--reveal-delay, 0ms) + 550ms) both;
+  }
+
+  /* Arrows on buttons and card links nudge forward on hover. */
+  .button svg, .door-link svg { transition: translate .25s ease; }
+  .button:hover svg, .door:hover .door-link svg, .door:focus-visible .door-link svg { translate: 4px 0; }
+}
+
 @media (max-width: 900px) {
   .hub-hero-grid, .hub-story, .hub-contact { grid-template-columns: 1fr; }
   .hub-portrait { max-width: 520px; }
@@ -439,12 +476,12 @@ h1 em, h2 em { color: var(--pink); font-weight: 400; }
   .service-block { padding-block: 40px; }
   .steps, .audience-grid { grid-template-columns: 1fr; }
   .cta-panel { padding: 30px 24px; }
-  .about-portrait { box-shadow: 12px 12px 0 var(--pink); margin-right: 12px; }
+  .about-portrait { box-shadow: 12px 12px 0 var(--pink); margin-right: 12px; --frame-offset: 12px; }
   .site-nav { gap: 14px; }
   .site-nav a { font-size: 12px; }
   .site .brand small { display: none; }
   .hub-hero-grid { padding-block: 48px 64px; }
-  .hub-portrait { box-shadow: 12px 12px 0 var(--blue); margin-right: 12px; }
+  .hub-portrait { box-shadow: 12px 12px 0 var(--blue); margin-right: 12px; --frame-offset: 12px; }
   .record-grid { grid-template-columns: 1fr; }
   .editorial-head { align-items: flex-start; flex-direction: column; gap: 10px; }
   .editorial-row { display: flex; gap: 12px; margin-inline: -18px; overflow-x: auto; padding-inline: 18px; scroll-snap-type: x mandatory; scrollbar-width: none; }
