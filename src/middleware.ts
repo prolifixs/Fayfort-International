@@ -2,7 +2,27 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// The enterprise app (login, dashboard, admin, /api) is closed in production until its
+// access-control issues are fixed (docs/SECURITY-REVIEW.md). Set ENABLE_ENTERPRISE=true
+// to reopen it; until then only the public site is served.
+const ENTERPRISE_ENABLED = process.env.ENABLE_ENTERPRISE === 'true'
+const PUBLIC_SITE_PATHS = ['/', '/services', '/about-us', '/terms', '/terms-ebooks', '/ebook/landed']
+
+const isPublicSitePath = (pathname: string) =>
+  PUBLIC_SITE_PATHS.includes(pathname) || pathname.startsWith('/ebook/landed/')
+
+// Build output, public images, and single-segment files in /public (favicon, robots.txt).
+const isStaticAsset = (pathname: string) =>
+  pathname.startsWith('/_next/') || pathname.startsWith('/images/') || /^\/[^/]+\.[a-z0-9]+$/i.test(pathname)
+
 export async function middleware(req: NextRequest) {
+  if (!ENTERPRISE_ENABLED) {
+    const { pathname } = req.nextUrl
+    if (isPublicSitePath(pathname) || isStaticAsset(pathname)) return NextResponse.next()
+    // Rewriting to a path with no route renders the standard 404 page with a 404 status.
+    return NextResponse.rewrite(new URL('/__closed', req.url))
+  }
+
   const res = NextResponse.next()
 
   const publicRoutes = [
@@ -14,7 +34,11 @@ export async function middleware(req: NextRequest) {
     '/check-email',
     '/verify-email',
     '/ebook/landed',
-    '/products/fay'
+    '/products/fay',
+    '/services',
+    '/about-us',
+    '/terms',
+    '/terms-ebooks'
   ]
   const isPublicRoute = publicRoutes.some(route =>
     req.nextUrl.pathname === route ||

@@ -32,7 +32,7 @@ export async function POST(
       } catch (error: any) {
         console.error('❌ Video processing error:', error)
         return NextResponse.json(
-          { error: error.message || 'Failed to add video' },
+          { error: 'Failed to add video' },
           { status: 400 }
         )
       }
@@ -57,7 +57,7 @@ export async function POST(
       } catch (error: any) {
         console.error('❌ Media service upload error:', error)
         return NextResponse.json(
-          { error: error.message || 'Upload failed' },
+          { error: 'Upload failed' },
           { status: 500 }
         )
       }
@@ -68,7 +68,7 @@ export async function POST(
   } catch (error: any) {
     console.error('❌ Unexpected error:', error)
     return NextResponse.json(
-      { error: error.message || 'Upload failed' },
+      { error: 'Upload failed' },
       { status: 500 }
     )
   }
@@ -92,7 +92,7 @@ export async function PUT(
   } catch (error: any) {
     console.error('Media reorder error:', error)
     return NextResponse.json(
-      { error: error.message || 'Reorder failed' },
+      { error: 'Reorder failed' },
       { status: 500 }
     )
   }

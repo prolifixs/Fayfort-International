@@ -28,7 +28,8 @@ export async function GET(request: Request) {
 
   const { data, error, count } = await query
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('notifications query failed:', error)
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 
   return NextResponse.json({
@@ -60,7 +61,8 @@ export async function PATCH(request: Request) {
       .select()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('notifications query failed:', error)
+      return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
     }
     return NextResponse.json(data)
   }
@@ -73,7 +75,8 @@ export async function PATCH(request: Request) {
     .select()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('notifications query failed:', error)
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 
   return NextResponse.json(data[0])

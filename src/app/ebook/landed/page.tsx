@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
-import { ArrowDown, ArrowRight, BedDouble, Check, ChevronLeft, ChevronRight, ClipboardCheck, Factory, MapPin, PackageSearch, RotateCcw, SearchCheck, ShieldCheck, Store, Truck, UtensilsCrossed, X, type LucideIcon } from 'lucide-react'
-import { CHECKOUT_URL, INSTAGRAM_HANDLE, PRICE_USD, PRICE_WAS_USD, REFUND_ANSWER, SOURCING_ENQUIRY_URL, SUPPORT_EMAIL, formatPrice } from './config'
+import { ArrowDown, ArrowRight, Check, ClipboardCheck, Factory, MapPin, PackageSearch, RotateCcw, SearchCheck, ShieldCheck, Store, X } from 'lucide-react'
+import ShopifyBuyButton from '../../components/ShopifyBuyButton'
+import DirectoryCarousel from './DirectoryCarousel'
+import { FAYFORT_INSTAGRAM, SOURCING_ENQUIRY_URL, SUPPORT_EMAIL } from '@/config/contact'
+import { CHECKOUT_URL, PRICE_USD, PRICE_WAS_USD, REFUND_ANSWER, formatPrice } from './config'
 
 const failures = [
   {
@@ -67,121 +70,6 @@ const faqs: [string, ReactNode][] = [
   ...(REFUND_ANSWER ? [['Can I get a refund?', REFUND_ANSWER] as [string, ReactNode]] : []),
   ['Do you source for people?', <>Yes. That is the main business. A directory will tell you where to go; it will not go for you. If you want someone on the ground, <a href={SOURCING_ENQUIRY_URL}>tell us what you need</a>.</>],
 ]
-
-type SampleEntry = {
-  kind: string
-  icon: LucideIcon
-  name: string
-  nameZh?: string
-  addressZh?: string
-  address: string
-  details: [string, string][]
-  note?: string
-  verified?: boolean
-}
-
-// One real entry from each directory table. Personal phone numbers and contact names stay behind the paywall.
-const sampleEntries: SampleEntry[] = [
-  {
-    kind: 'Market',
-    icon: Store,
-    name: 'Guangda Leather Clothing City',
-    addressZh: '广州白云区石井街道庆槎路901号',
-    address: 'No. 901 Qingcha Road, Shijing, Baiyun District, Guangzhou',
-    details: [['Category', 'Stocklot & Factory Clearance'], ['Type', 'Market, traders'], ['MOQ note', 'As low as 10 pieces'], ['Compiled', '15 Aug 2026']],
-    verified: true,
-  },
-  {
-    kind: 'Hotel',
-    icon: BedDouble,
-    name: 'Estay Residence',
-    address: 'No. 1020 Xingang Dong Rd, Haizhu, behind Poly World Trade Centre, Block D',
-    details: [['Area', 'Pazhou / Canton Fair'], ['Price', 'Budget'], ['Style', 'Apartment-style, walkable to the fair']],
-    note: 'Reviews warn the map pin is wrong and taxi drivers drop at the wrong spot. Show Block D, Poly World Trade Centre.',
-  },
-  {
-    kind: 'Restaurant',
-    icon: UtensilsCrossed,
-    name: 'Sadda Restaurant',
-    nameZh: '萨德餐厅',
-    address: 'Jinying Building 1F, 316 Huanshi Zhong Rd, Yuexiu',
-    details: [['Area', 'Xiaobei'], ['Cuisine', 'Halal / Middle Eastern (Yemeni)'], ['Halal', 'Yes'], ['Hours', '10:00–22:00 daily']],
-    note: 'Mandi and haneeth are the dishes reviewers name. Shisha at the entrance; one reviewer found the room chaotic.',
-  },
-  {
-    kind: 'Service',
-    icon: Truck,
-    name: 'MCO KOKO Cargo',
-    address: 'Guangzhou',
-    details: [['Type', 'Cargo consolidator (air, Ethiopian)'], ['Hours', '15:00–23:00'], ['Contact', 'Manager on WhatsApp, reachable from Africa']],
-    note: 'Opens at 3pm and works to 11pm, evening hours to match African time zones. Do not go in the morning.',
-  },
-]
-
-const SLIDE_GAP = 16 // keep in sync with .carousel-track gap
-
-function DirectoryCarousel() {
-  const trackRef = useRef<HTMLDivElement>(null)
-  const [active, setActive] = useState(0)
-  const reduceMotion = useReducedMotion()
-
-  const goTo = (index: number) => {
-    const track = trackRef.current
-    if (!track) return
-    const clamped = Math.max(0, Math.min(sampleEntries.length - 1, index))
-    const width = (track.children[0] as HTMLElement | undefined)?.offsetWidth ?? 0
-    track.scrollTo({ left: clamped * (width + SLIDE_GAP), behavior: reduceMotion ? 'auto' : 'smooth' })
-  }
-
-  useEffect(() => {
-    const track = trackRef.current
-    if (!track) return
-    let frame = 0
-    const onScroll = () => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const width = (track.children[0] as HTMLElement | undefined)?.offsetWidth || 1
-        setActive(Math.round(track.scrollLeft / (width + SLIDE_GAP)))
-      })
-    }
-    track.addEventListener('scroll', onScroll, { passive: true })
-    return () => { track.removeEventListener('scroll', onScroll); cancelAnimationFrame(frame) }
-  }, [])
-
-  return (
-    <div className="directory-carousel" role="region" aria-roledescription="carousel" aria-label="Sample directory entries">
-      <div className="carousel-head">
-        <div className="carousel-tabs" role="group" aria-label="Jump to directory">
-          {sampleEntries.map(({ kind, icon: Icon }, index) => (
-            <button key={kind} type="button" aria-pressed={active === index} onClick={() => goTo(index)}><Icon size={13} aria-hidden="true" />{kind}</button>
-          ))}
-        </div>
-        <div className="carousel-arrows">
-          <button type="button" aria-label="Previous entry" onClick={() => goTo(active - 1)} disabled={active === 0}><ChevronLeft size={16} /></button>
-          <button type="button" aria-label="Next entry" onClick={() => goTo(active + 1)} disabled={active === sampleEntries.length - 1}><ChevronRight size={16} /></button>
-        </div>
-      </div>
-      <div className="carousel-track" ref={trackRef}>
-        {sampleEntries.map((entry, index) => (
-          <article className="directory-card carousel-slide" key={entry.name} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${sampleEntries.length}: ${entry.kind}`}>
-            <div className="directory-card-bar">
-              <span><SearchCheck size={14} /> FaySource · {entry.kind} directory</span>
-              {entry.verified ? <span className="entry-status"><i /> Verified</span> : <span className="entry-kind"><entry.icon size={12} aria-hidden="true" /> {entry.kind}</span>}
-            </div>
-            <div className="directory-card-body">
-              <h3>{entry.name}{entry.nameZh && <span lang="zh-CN">{entry.nameZh}</span>}</h3>
-              {entry.addressZh && <p className="entry-zh" lang="zh-CN">{entry.addressZh}</p>}
-              <p className="entry-en"><MapPin size={13} aria-hidden="true" /> {entry.address}</p>
-              <dl>{entry.details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-              {entry.note && <p className="entry-note"><strong>Field note</strong>{entry.note}</p>}
-            </div>
-          </article>
-        ))}
-      </div>
-      <div className="carousel-dots" aria-hidden="true">{sampleEntries.map(({ kind }, index) => <i key={kind} className={active === index ? 'is-active' : undefined} />)}</div>
-    </div>
-  )
-}
 
 function CardPattern({ type }: { type: 'current' | 'factory' | 'independent' }) {
   const patterns = {
@@ -360,14 +248,14 @@ export default function LandedPage() {
               <div className="card-top"><span>LANDED + FaySource Access</span><small>Instant delivery</small></div>
               <div className="price"><small>Price</small><strong>{PRICE_WAS_USD !== null && <s aria-label={`Was ${formatPrice(PRICE_WAS_USD)}`}>{formatPrice(PRICE_WAS_USD)}</s>}<span aria-label={`Now ${formatPrice(PRICE_USD)}`}>{formatPrice(PRICE_USD)}</span></strong></div>
               <ul className="tier-list">{included.map((item) => <li key={item}><Check />{item}</li>)}</ul>
-              <a className="button button-primary" href={CHECKOUT_URL} target="_blank" rel="noreferrer">{directoryCta} <ArrowRight size={17} /></a>
+              <ShopifyBuyButton label={directoryCta} fallbackUrl={CHECKOUT_URL} />
             </div></motion.article>
           </div>
           <div className="pricing-notes">
             <p>LANDED is also on Amazon. That edition is the book on its own. This one includes the live directory, which is the part that keeps working after you get home.</p>
             <div>
-              <p className="sourcing-note">Want someone on the ground instead? Sourcing, factory visits, inspection, consolidation and freight are quoted per job. <a href={SOURCING_ENQUIRY_URL}>Tell us what you need</a>.</p>
-              <small>Access is issued to one named subscriber and is personal and non-transferable, including within the same business. Digital product. See terms before purchase.</small>
+              <p className="sourcing-note">Want someone on the ground instead? <a href="/services">Sourcing, factory visits, inspection, consolidation and freight</a> are quoted per job. <a href={SOURCING_ENQUIRY_URL}>Tell us what you need</a>.</p>
+              <small>Access is issued to one named subscriber and is personal and non-transferable, including within the same business. Digital product. See <a href="/terms-ebooks">terms</a> before purchase.</small>
             </div>
           </div>
         </div></section>
@@ -393,8 +281,8 @@ export default function LandedPage() {
 
       <footer className="site-footer"><div className="shell footer-main">
         <div><a className="brand footer-brand" href="#top"><span className="brand-mark">L</span><span><strong>LANDED</strong><small>by FayFay</small></span></a><p>FAYFORT International Trading<br />Published by The Hard Way Press</p></div>
-        <div><span>Contact</span><a href={`mailto:${SUPPORT_EMAIL}`}>Corrections: {SUPPORT_EMAIL}</a><a href={SOURCING_ENQUIRY_URL}>Sourcing enquiries</a><a href={`https://instagram.com/${INSTAGRAM_HANDLE}`} target="_blank" rel="noreferrer">Instagram: @{INSTAGRAM_HANDLE}</a></div>
-        <div><span>Legal</span><p>Terms · Privacy · Access &amp; Licence Terms · Refund Policy</p></div>
+        <div><span>Contact</span><a href={`mailto:${SUPPORT_EMAIL}`}>Corrections: {SUPPORT_EMAIL}</a><a href={SOURCING_ENQUIRY_URL}>Sourcing enquiries</a><a href={`https://instagram.com/${FAYFORT_INSTAGRAM}`} target="_blank" rel="noreferrer">Instagram: @{FAYFORT_INSTAGRAM}</a></div>
+        <div><span>Legal</span><a href="/terms-ebooks">Access &amp; Licence Terms</a><a href="/terms-ebooks#refunds">Refund Policy</a><a href="/terms">Terms</a><a href="/about-us">About FAYFORT</a></div>
       </div><div className="shell footer-bottom"><p>© 2026 FayFay / FAYFORT International Trading. WondaTechnologies LV, Nevada.</p></div></footer>
       <AnimatePresence>
         {showMobileCta && <motion.a

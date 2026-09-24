@@ -83,7 +83,7 @@ export async function DELETE(
   } catch (error: unknown) {
     console.error('Product deletion error:', error)
     return new Response(JSON.stringify({ 
-      message: error instanceof Error ? error.message : 'Failed to delete product'
+      message: 'Failed to delete product'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

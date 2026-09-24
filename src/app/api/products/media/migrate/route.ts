@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('❌ Migration failed:', error)
     return NextResponse.json(
-      { error: error.message || 'Migration failed' },
+      { error: 'Migration failed' },
       { status: 500 }
     )
   }

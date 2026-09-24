@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     if (error) {
       console.error('Supabase Error:', error)
       return NextResponse.json(
-        { error: error.message },
+        { error: error.code === '42501' ? 'Not allowed' : 'Something went wrong' },
         { status: error.code === '42501' ? 403 : 500 }
       )
     }

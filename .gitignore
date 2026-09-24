@@ -23,6 +23,11 @@
 # misc
 .DS_Store
 *.pem
+*.key
+
+# Shopify email templates carry the live directory passwords; they are pasted into
+# Shopify by hand and must never reach the remote.
+/docs/email/
 
 # debug
 npm-debug.log*
