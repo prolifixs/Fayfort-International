@@ -27,19 +27,20 @@ const milestones = [
 export default function HomePage() {
   return (
     <div className="hub">
-      {/* Who she is, and the two main doors */}
+      {/* Who she is, and the two main doors. The hero starts .is-visible so its entrance
+          plays from first paint instead of waiting for RevealOnScroll to load. */}
       <section className="hub-hero"><div className="shell hub-hero-grid">
         <div className="hub-hero-copy">
-          <p className="hub-name" data-reveal><Image className="hub-butterfly" src="/images/fay/butterfly.png" alt="" width={34} height={30} priority /> FayFay</p>
-          <h1 data-reveal style={revealDelay(1)}>Between China’s factories and <em>Africa’s businesses.</em></h1>
-          <p className="page-lede" data-reveal style={revealDelay(2)}>I’ve lived in China for eight years. I source, inspect and ship for importers in Nigeria, Zimbabwe, South Africa, the UK and the US, and I wrote the directory I wish I’d had when I started.</p>
-          <div className="hub-actions" data-reveal style={revealDelay(3)}>
+          <p className="hub-name is-visible" data-reveal><Image className="hub-butterfly" src="/images/fay/butterfly.png" alt="" width={34} height={30} priority /> FayFay</p>
+          <h1 className="is-visible" data-reveal style={revealDelay(1)}>Between China’s factories and <em>Africa’s businesses.</em></h1>
+          <p className="page-lede is-visible" data-reveal style={revealDelay(2)}>I’ve lived in China for eight years. I source, inspect and ship for importers in Nigeria, Zimbabwe, South Africa, the UK and the US, and I wrote the directory I wish I’d had when I started.</p>
+          <div className="hub-actions is-visible" data-reveal style={revealDelay(3)}>
             <Link className="button button-blue" href="/services">Work with FAYFORT <ArrowRight size={17} /></Link>
             <Link className="text-button" href="/ebook/landed">Get LANDED, the directory</Link>
           </div>
-          <p className="hub-role" data-reveal style={revealDelay(4)}>Founder, FAYFORT International Trading · Author, LANDED</p>
+          <p className="hub-role is-visible" data-reveal style={revealDelay(4)}>Founder, FAYFORT International Trading · Author, LANDED</p>
         </div>
-        <div className="hub-portrait" data-reveal="zoom" style={revealDelay(2)}>
+        <div className="hub-portrait is-visible" data-reveal="zoom" style={revealDelay(2)}>
           <Image src="/images/fay/fay-blue-satin.jpg" alt="FayFay in a blue satin gown" fill priority sizes="(max-width: 900px) 100vw, 42vw" style={{ objectFit: 'cover', objectPosition: '50% 30%' }} />
         </div>
       </div></section>

@@ -63,15 +63,25 @@ h1 em, h2 em { color: var(--pink); font-weight: 400; }
 .button-primary:hover { background: var(--magenta); }
 .text-button { align-items: center; border-bottom: 1px solid var(--ink); display: inline-flex; font-size: 12px; font-weight: 700; gap: 9px; padding-bottom: 5px; }
 
-.cover-scene { isolation: isolate; min-height: 550px; perspective: 1100px; position: relative; transform-style: preserve-3d; }
+/* Landed hero entrance: CSS rather than framer-motion so it runs from first paint. */
+@keyframes landed-book-in { from { opacity: 0; transform: translateY(45px) rotate(3deg); } }
+@keyframes landed-copy-in { from { opacity: 0; transform: translateX(32px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .cover-scene { animation: landed-book-in .9s cubic-bezier(.22, 1, .36, 1) .12s both; }
+  .hero-copy { animation: landed-copy-in .8s cubic-bezier(.22, 1, .36, 1) both; }
+}
+
+/* The tilted/flipping book dips behind its parents' planes in the shared 3D context, so the
+   parents must not take pointer hits or they swallow taps on the far half of the book. */
+.cover-scene { isolation: isolate; min-height: 550px; perspective: 1100px; pointer-events: none; position: relative; transform-style: preserve-3d; }
 .cover-scene::before { background: var(--pink); content: ''; inset: 55px 4% 45px 2%; position: absolute; transform: rotate(-4deg) translateZ(-1px); z-index: 0; }
-.book-motion { height: 490px; left: 50%; position: absolute; top: 22px; transform-origin: 50% 70%; transform-style: preserve-3d; will-change: transform; width: 330px; z-index: 2; }
-.book-cover { background: none; border: 0; box-shadow: 22px 28px 50px rgba(2, 20, 78, .3); cursor: pointer; display: block; height: 100%; padding: 0; position: relative; transform-origin: center; transform-style: preserve-3d; width: 100%; z-index: 1; }
+.book-motion { height: 490px; left: 50%; pointer-events: none; position: absolute; top: 22px; transform-origin: 50% 70%; transform-style: preserve-3d; will-change: transform; width: 330px; z-index: 2; }
+.book-cover { background: none; border: 0; box-shadow: 22px 28px 50px rgba(2, 20, 78, .3); cursor: pointer; display: block; height: 100%; padding: 0; pointer-events: auto; position: relative; transform-origin: center; transform-style: preserve-3d; width: 100%; z-index: 1; }
 .book-cover:focus-visible { outline: 2px solid var(--pink); outline-offset: 6px; }
 .cover-face { -webkit-backface-visibility: hidden; backface-visibility: hidden; inset: 0; overflow: hidden; position: absolute; }
 .cover-back { transform: rotateY(180deg); }
 .cover-front::after { border-left: 8px solid rgba(255,255,255,.25); content: ''; inset: 0 auto 0 0; position: absolute; z-index: 1; }
-.cover-caption { align-items: center; bottom: 0; color: var(--muted); display: flex; font-size: 8px; font-weight: 700; justify-content: space-between; letter-spacing: .1em; position: absolute; right: 0; text-transform: uppercase; width: 72%; z-index: 3; }
+.cover-caption { align-items: center; bottom: 0; color: var(--muted); display: flex; font-size: 8px; font-weight: 700; justify-content: space-between; letter-spacing: .1em; pointer-events: auto; position: absolute; right: 0; text-transform: uppercase; width: 72%; z-index: 3; }
 .cover-caption button { align-items: center; background: none; border: 0; color: inherit; cursor: pointer; display: inline-flex; font: inherit; gap: 6px; letter-spacing: inherit; padding: 4px 0; text-transform: inherit; }
 .cover-caption button:hover { color: var(--ink); }
 .cover-caption button:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; }

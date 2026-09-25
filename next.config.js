@@ -36,14 +36,14 @@ const nextConfig = {
   // Placeholder fallbacks so the build never crashes for missing credentials —
   // real backend wiring (Stripe/Supabase) is deferred to the later ERP/CRM pass.
   // Replace these with real values (locally or on Vercel) whenever that happens.
+  // Public values only: everything listed here is inlined into the browser bundles, so
+  // server secrets (Stripe secret/webhook keys, Supabase service role) must never be added.
+  // Server code reads those from process.env at runtime and has its own fallbacks.
   env: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://www.fayfort.com',
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder',
-    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || 'whsec_placeholder',
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key',
   },
   webpack: (config, { isServer }) => {
     // Add PDF handling from .ts config

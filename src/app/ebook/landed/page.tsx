@@ -133,7 +133,9 @@ export default function LandedPage() {
       <div id="content">
         {/* 1 — Hero */}
         <section className="hero shell" ref={heroRef}>
-          <motion.div className="cover-scene" aria-label="Landed book cover" initial={reduceMotion ? false : { opacity: 0, y: 45, rotate: 3 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ delay: .12, duration: .9, ease: [0.22, 1, 0.36, 1] }}>
+          {/* The entrance is a CSS animation (globals.css) so it plays from first paint instead of
+              waiting for the page's JavaScript; the server would otherwise send the hero invisible. */}
+          <div className="cover-scene" aria-label="Landed book cover">
             <motion.div className="book-motion" style={{ x: '-50%', y: bookY, rotate: bookRotate, scale: bookScale }}>
               <motion.button
                 type="button"
@@ -150,14 +152,14 @@ export default function LandedPage() {
               </motion.button>
             </motion.div>
             <div className="cover-caption"><button type="button" onClick={() => setShowBack((value) => !value)}><RotateCcw size={11} /> {showBack ? 'See front cover' : 'See back cover'}</button><span>{showBack ? 'Back' : 'Front'}</span></div>
-          </motion.div>
-          <motion.div className="hero-copy" initial={reduceMotion ? false : { opacity: 0, x: 32 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .8, ease: [0.22, 1, 0.36, 1] }}>
+          </div>
+          <div className="hero-copy">
             <p className="overline"><span /> FAYFORT International Trading</p>
             <h1>The fair is Plan A. <em>Nobody hands you Plan B.</em></h1>
             <p className="hero-lede">LANDED is a working directory of the wholesale markets and factories of Guangzhou and Guangdong — where to go, which building, which floor, and the address in Chinese to show your driver.</p>
             <div className="hero-actions"><a className="button button-primary" href="#checkout">{directoryCta} <ArrowRight size={17} /></a><a className="text-button" href="#inside">What’s actually inside <ArrowDown size={15} /></a></div>
             <p className="hero-trust">Written on the ground in Guangzhou <i>·</i> Every entry dated <i>·</i> Updated continuously, not reprinted</p>
-          </motion.div>
+          </div>
         </section>
 
         {/* 2 — Who it's for: let visitors qualify themselves straight away */}
