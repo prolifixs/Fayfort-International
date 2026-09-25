@@ -6,9 +6,13 @@ import { FAYFAY_SOCIAL_HANDLE, FAYFORT_INSTAGRAM, SUPPORT_EMAIL, WHATSAPP_DISPLA
 import { PRICE_USD, formatPrice } from '../ebook/landed/config'
 import { revealDelay } from './components'
 
+const title = 'FayFay — Founder of FAYFORT International Trading'
+const description = 'FayFay has lived and worked in China for eight years, sourcing, inspecting and shipping goods for importers across Africa, the UK and the US. Founder of FAYFORT International Trading and author of LANDED.'
+
 export const metadata: Metadata = {
-  title: 'FayFay — Founder of FAYFORT International Trading',
-  description: 'FayFay has lived and worked in China for eight years, sourcing, inspecting and shipping goods for importers across Africa, the UK and the US. Founder of FAYFORT International Trading and author of LANDED.',
+  title,
+  description,
+  openGraph: { title, description, url: '/', images: [{ url: '/images/fay/fay-blue-satin.jpg', alt: 'FayFay in a blue satin gown' }] },
 }
 
 const milestones = [

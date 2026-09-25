@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SUPPORT_EMAIL } from '@/config/contact'
-import { DraftBanner, PageHero, Tbc, revealDelay } from '../components'
+import { PageHero, revealDelay } from '../components'
 
 export const metadata: Metadata = {
   title: 'Terms and Conditions | FAYFORT International Trading',
@@ -13,15 +13,14 @@ const email = <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
 export default function TermsPage() {
   return (
     <>
-      <PageHero kicker="Legal" title="Terms and Conditions" lede={<>Last updated: <Tbc>date</Tbc></>} />
+      <PageHero kicker="Legal" title="Terms and Conditions" lede="Last updated: 15 August 2026" />
       <div className="shell prose-page legal">
-        <DraftBanner />
         <article className="prose" data-reveal="fade" style={revealDelay(3)}>
           <p>These terms govern your use of this website and any sourcing, inspection, consolidation or shipping services provided by FAYFORT International Trading.</p>
-          <p>Separate terms apply to our books and directory subscriptions. See <Link href="/terms-ebooks">Ebook and Directory Terms</Link>.</p>
+          <p>Separate terms apply to our book and directory access. See <Link href="/terms-ebooks">Ebook and Directory Terms</Link>.</p>
 
           <h2 id="who-we-are">1. Who we are</h2>
-          <p>FAYFORT International Trading (<Tbc>registered legal name</Tbc>), registered in <Tbc>country</Tbc> under registration number <Tbc>registration number</Tbc>, registered address <Tbc>registered address</Tbc>.</p>
+          <p>FAYFORT International Trading is the trading name of FAYFORT International.</p>
           <p>In these terms, “we”, “us” and “our” mean FAYFORT International Trading. “You” and “your” mean the person or business using our website or engaging our services.</p>
           <p>Contact: {email}</p>
 
@@ -34,15 +33,15 @@ export default function TermsPage() {
           <p><strong>We act on your instructions.</strong> We source, inspect, consolidate and arrange shipment of goods you choose to buy.</p>
           <p><strong>We are not the manufacturer.</strong> Goods are made by third-party factories and suppliers. We do not manufacture anything and we do not warrant the goods themselves.</p>
           <p><strong>We are not your customs broker, lawyer, or regulatory advisor.</strong> We will share what we know and tell you what to ask. Formal advice must come from qualified professionals and the relevant authorities in your own country.</p>
-          <p><strong>Any contract for the goods may be between you and the supplier</strong>, depending on how a job is structured. We will tell you which arrangement applies before you commit. <Tbc>contracting arrangement to be confirmed</Tbc></p>
+          <p><strong>Any contract for the goods may be between you and the supplier</strong>, depending on how a job is structured. We will tell you which arrangement applies before you commit.</p>
 
           <h2 id="payment">4. Quotations, commitment fees and payment</h2>
           <p><strong>Quotations are estimates</strong> until confirmed in writing, and are based on the information you give us. If your quantity, specification or destination changes, the price changes.</p>
-          <p><strong>A commitment fee may be required</strong> before work begins. Where a commitment fee is charged, it is <Tbc>deducted from your final invoice / non-refundable / refundable in stated circumstances</Tbc>.</p>
+          <p><strong>A commitment fee may be required</strong> before work begins. Where a commitment fee is charged, your quote will say whether it is deducted from your final invoice.</p>
           <p><strong>Supplier deposits.</strong> Chinese suppliers typically require a deposit before production — commonly around 30% of order value, occasionally more where materials are genuinely expensive. Deposits paid to suppliers are governed by that supplier’s terms, and may not be recoverable if you cancel.</p>
-          <p><strong>Currency.</strong> Unless stated otherwise, our fees are quoted in <Tbc>currency</Tbc>. Where a supplier is paid in RMB, the applicable exchange rate is the rate at the time of payment, and we will tell you what it was.</p>
+          <p><strong>Currency.</strong> Your quote states the currency of our fees. Where a supplier is paid in RMB, the applicable exchange rate is the rate at the time of payment, and we will tell you what it was.</p>
           <p><strong>Taxes and duties.</strong> Our prices exclude import duty, destination clearing charges, VAT and any other taxes or levies in your country. Those are yours.</p>
-          <p><strong>Late payment.</strong> Goods and documents may be held until payment is received in full. Storage charges may apply to goods held at our facility beyond <Tbc>number</Tbc> days.</p>
+          <p><strong>Late payment.</strong> Goods and documents may be held until payment is received in full. Storage charges may apply to goods held at our facility beyond the period agreed in your quote.</p>
 
           <h2 id="your-responsibilities">5. Your responsibilities</h2>
           <p>You are responsible for:</p>
@@ -71,10 +70,10 @@ export default function TermsPage() {
 
           <h2 id="shipping">8. Shipping, delivery and risk</h2>
           <p><strong>Transit times are estimates.</strong> Sea and air schedules, port congestion, customs inspection, weather and public holidays are outside our control.</p>
-          <p><strong>Risk in the goods passes to you</strong> at <Tbc>Incoterm / point of transfer</Tbc>.</p>
-          <p><strong>Insurance.</strong> Cargo insurance is <Tbc>included / available on request / your responsibility</Tbc>. Unless you have arranged cover, goods travel uninsured.</p>
+          <p><strong>Risk in the goods passes to you</strong> at the point agreed in your quote (the Incoterm stated there).</p>
+          <p><strong>Insurance.</strong> Cargo insurance is included only where your quote says so. Unless cover has been arranged, goods travel uninsured.</p>
           <p><strong>Clearance at destination</strong> is your responsibility, including duty, clearing fees, demurrage and any storage charges arising at the destination port. We prepare documentation and can introduce you to clearing agents, but we cannot guarantee clearance or its cost.</p>
-          <p><strong>Shortages, loss or damage.</strong> Any claim must be notified in writing within <Tbc>number</Tbc> days of delivery, with photographs and the original packing documentation.</p>
+          <p><strong>Shortages, loss or damage.</strong> Any claim must be notified in writing promptly after delivery, and within any period stated in your quote, with photographs and the original packing documentation.</p>
 
           <h2 id="cancellation">9. Cancellation</h2>
           <p><strong>By you.</strong> You may cancel before production begins, subject to any supplier deposit already paid and any fees already incurred. Once a supplier has begun production, cancellation is a matter for that supplier’s terms.</p>
@@ -87,7 +86,7 @@ export default function TermsPage() {
             <li>We are not liable for the quality, safety, performance or fitness of goods manufactured by third parties</li>
             <li>We are not liable for loss of profit, loss of business, loss of contracts, or any indirect or consequential loss</li>
             <li>We are not liable for delays, seizures, refusals of entry or penalties imposed by customs or regulatory authorities in any country</li>
-            <li>Our total liability in connection with any job is limited to <Tbc>the fees you paid us for that job / a stated amount</Tbc></li>
+            <li>Our total liability in connection with any job is limited to the fees you paid us for that job</li>
           </ul>
 
           <h2 id="confidentiality">11. Confidentiality</h2>
@@ -95,16 +94,13 @@ export default function TermsPage() {
           <p>We ask the same of you in respect of supplier details, pricing and other commercial information we share with you.</p>
 
           <h2 id="data">12. Data protection</h2>
-          <p>We collect and use personal data as described in our privacy policy <Tbc>privacy policy link</Tbc>. We do not sell your data.</p>
+          <p>We collect and use personal data only to carry out your instructions and to communicate with you about them. We do not sell your data.</p>
 
           <h2 id="changes">13. Changes to these terms</h2>
           <p>We may update these terms. The version published on this page at the time you engage us is the version that applies to that job. Material changes will be dated at the top of this page.</p>
 
-          <h2 id="governing-law">14. Governing law</h2>
-          <p>These terms are governed by the law of <Tbc>jurisdiction</Tbc>, and the courts of <Tbc>jurisdiction</Tbc> have exclusive jurisdiction.</p>
-
-          <h2 id="contact">15. Contact</h2>
-          <p><Tbc>registered legal name</Tbc><br /><Tbc>registered address</Tbc><br />{email}</p>
+          <h2 id="contact">14. Contact</h2>
+          <p>FAYFORT International<br />{email}</p>
         </article>
       </div>
     </>

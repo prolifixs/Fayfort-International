@@ -141,8 +141,14 @@ h1 em, h2 em { color: var(--pink); font-weight: 400; }
 .author-portrait { background: var(--royal); box-shadow: 18px 18px 0 var(--pink); min-height: 590px; overflow: hidden; position: relative; }
 .author-copy { align-self: center; }
 .author-copy h2 { font-size: clamp(50px, 5.5vw, 74px); letter-spacing: -.04em; line-height: .94; }
-.author-copy > p { color: var(--on-dark); font-family: var(--serif); font-size: 18px; line-height: 1.6; max-width: 560px; }
+.author-copy > p { color: var(--on-dark); font-family: var(--serif); font-size: 18px; line-height: 1.6; margin: 0 0 16px; max-width: 560px; }
 .author-copy aside { border-left: 2px solid var(--pink); color: var(--pink-light); font-size: 10px; line-height: 1.55; margin-top: 38px; max-width: 420px; padding-left: 15px; }
+/* LANDED sales order: "Who it’s for" sits right under the hero on its own tinted band. */
+.fit { background: var(--mist); border-block: 1px solid var(--line); }
+.author-copy > .author-proof { color: var(--pink-light); font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1.6; margin: 18px 0 28px; }
+.author-proof i { color: var(--on-dark-muted); font-style: normal; margin: 0 6px; }
+.author-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 26px; margin-top: 34px; }
+.author-actions .text-button { border-color: var(--paper); color: var(--paper); }
 
 .faq-grid { display: grid; gap: 9vw; grid-template-columns: .8fr 1.2fr; }
 .faq-grid h2 { font-size: clamp(48px, 5.3vw, 72px); letter-spacing: -.04em; line-height: .96; }
@@ -315,14 +321,11 @@ h1 em, h2 em { color: var(--pink); font-weight: 400; }
 .audience-grid .inside-card h3 { margin-top: 0; }
 
 .legal .prose h2 { font-size: clamp(24px, 2.4vw, 30px); scroll-margin-top: 90px; }
-.draft-banner { background: #fff6d9; border: 1px solid #f1d27a; border-left: 4px solid #d9a400; display: flex; flex-direction: column; gap: 4px; margin-bottom: 44px; padding: 16px 18px; }
-.draft-banner strong { color: #6b4e00; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
-.draft-banner span { color: #6b4e00; font-size: 14px; line-height: 1.5; }
-.tbc { background: #fff1b8; border-bottom: 1px dashed #b88a00; border-radius: 3px; color: #5c4300; font-size: .92em; padding: 1px 6px; }
 .terms-table-wrap { margin: 6px 0 20px; overflow-x: auto; }
 .terms-table { border-collapse: collapse; min-width: 520px; width: 100%; }
 .terms-table th, .terms-table td { border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.55; padding: 12px 14px 12px 0; text-align: left; vertical-align: top; }
 .terms-table th { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.terms-table td small { color: var(--muted); white-space: nowrap; }
 
 /* Homepage: FayFay's business and bio hub. Ink Blue (her butterfly) is the single accent. */
 .hub h1 em, .hub h2 em { color: var(--blue); }
@@ -415,6 +418,13 @@ h1 em, h2 em { color: var(--pink); font-weight: 400; }
   .button svg, .door-link svg { transition: translate .25s ease; }
   .button:hover svg, .door:hover .door-link svg, .door:focus-visible .door-link svg { translate: 4px 0; }
 }
+
+/* 404 page (also shown for the closed enterprise routes) */
+.not-found { align-items: center; display: flex; justify-content: center; min-height: 100vh; padding: 48px 18px; }
+.not-found-card { max-width: 620px; }
+.not-found-card > a img { display: block; margin-bottom: 34px; }
+.not-found-card h1 { font-size: clamp(38px, 5vw, 60px); letter-spacing: -.035em; line-height: 1; margin: 0 0 18px; }
+.not-found-links { align-items: center; display: flex; flex-wrap: wrap; gap: 24px; margin-top: 32px; }
 
 @media (max-width: 900px) {
   .hub-hero-grid, .hub-story, .hub-contact { grid-template-columns: 1fr; }

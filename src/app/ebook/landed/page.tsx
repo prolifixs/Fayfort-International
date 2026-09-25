@@ -7,7 +7,7 @@ import { ArrowDown, ArrowRight, Check, ClipboardCheck, Factory, MapPin, PackageS
 import ShopifyBuyButton from '../../components/ShopifyBuyButton'
 import DirectoryCarousel from './DirectoryCarousel'
 import { FAYFORT_INSTAGRAM, SOURCING_ENQUIRY_URL, SUPPORT_EMAIL } from '@/config/contact'
-import { CHECKOUT_URL, PRICE_USD, PRICE_WAS_USD, REFUND_ANSWER, formatPrice } from './config'
+import { CHECKOUT_URL, PRICE_USD, PRICE_WAS_USD, formatPrice } from './config'
 
 const failures = [
   {
@@ -61,13 +61,13 @@ const included = [
 ]
 
 const faqs: [string, ReactNode][] = [
-  ['Is this a physical book?', 'No. You get the PDF and EPUB immediately, plus access to the live directory. A paperback is coming.'],
+  ['Is this a physical book?', 'No. You get the PDF immediately, plus access to the live directory. A paperback is coming.'],
   ['What does “live directory” actually mean?', 'A web-based version of the address list that gets corrected and added to continuously. Every entry carries the date it was compiled and its verification status. The book is a snapshot of it.'],
   ['Do I need to speak Chinese?', 'No. Every entry we have carries the address in Chinese characters. Screenshot it and show it to your driver — that is the single most practical thing in the directory.'],
   ['How current is it?', 'Directory data compiled to 15 August 2026, and updated continuously after that. Every entry shows its own date. Anything older than a year should be treated as a strong lead rather than a fact, and the directory tells you which is which.'],
   ['Are the addresses guaranteed?', 'No, and we say so throughout. Markets move and stalls change hands. Confirm before you travel — never book a flight or commit money on the strength of an entry without checking it. Where we could not confirm something, the entry says so.'],
   ['Can I share my access with my business partner?', 'No. Access is issued to one named person and is monitored. Shared credentials are withdrawn without refund. Your partner needs their own.'],
-  ...(REFUND_ANSWER ? [['Can I get a refund?', REFUND_ANSWER] as [string, ReactNode]] : []),
+  ['Can I get a refund?', <>Every purchase includes the book as an instant download, so it is not refundable once the file has been downloaded. The full <a href="/terms-ebooks#refunds">refund terms</a> are in the Ebook and Directory Terms.</>],
   ['Do you source for people?', <>Yes. That is the main business. A directory will tell you where to go; it will not go for you. If you want someone on the ground, <a href={SOURCING_ENQUIRY_URL}>tell us what you need</a>.</>],
 ]
 
@@ -160,9 +160,39 @@ export default function LandedPage() {
           </motion.div>
         </section>
 
-        {/* 2 — The problem */}
+        {/* 2 — Who it's for: let visitors qualify themselves straight away */}
+        <section className="fit"><div className="shell section-space fit-grid">
+          <div><div className="section-kicker"><span>01</span><p>Who it’s for</p></div><h2>This is for you if…</h2><ul className="fit-list yes">
+            <li><Check />You buy from China, or you are about to.</li>
+            <li><Check />You are going to Guangzhou and want the days to count.</li>
+            <li><Check />You have been quoted a minimum you cannot meet.</li>
+            <li><Check />You suspect you are paying more than the person beside you.</li>
+            <li><Check />You want the address, not a contact form.</li>
+          </ul></div>
+          <div className="no-fit"><p className="mini-label">An honest no</p><h2>This is not for you if…</h2><ul className="fit-list no">
+            <li><X />You are looking for a supplier list to resell.</li>
+            <li><X />You want dropshipping suppliers or Alibaba alternatives.</li>
+            <li><X />You have never bought wholesale and want a beginner’s course.</li>
+          </ul></div>
+        </div></section>
+
+        {/* 3 — Who wrote this: the authority behind the book */}
+        <section className="author-section dark-section" id="author"><div className="shell author-grid">
+          <div className="author-portrait"><Image src="/images/landed/fayfay.jpg" alt="FayFay, founder of FAYFORT International Trading" fill sizes="(max-width: 700px) 100vw, 45vw" style={{ objectFit: 'cover', objectPosition: '50% 25%' }} /></div>
+          <div className="author-copy"><div className="section-kicker light"><span>02</span><p>About FayFay</p></div><h2>Who wrote this</h2>
+            <p className="author-proof">Eight years in China <i>·</i> Clients in Nigeria, the UK and the US <i>·</i> Founder, FAYFORT International Trading</p>
+            <p>I run FAYFORT International Trading — a trading, logistics and consultancy company based in China. I have been here eight years. I speak the language, I know how the markets work, and more usefully, I know which of them are worth your time.</p>
+            <p>Most people buying from China are not buying from the factory. They are buying from someone who bought from someone who bought from the factory, and every one of those people took a margin. My work is going directly to the source — finding the factory, walking the market, checking the goods, packing them properly and getting them home.</p>
+            <p>I wrote this because I kept answering the same questions. Where do I buy hair? Why is this so expensive? Which market has men’s clothing? I went to Guangzhou for a week and came home with nothing.</p>
+            <p>The addresses in this book are the answer to most of them. They are not secret and they are not magic — they are just hard to find, because the people who know them do not write them down.</p>
+            <p className="author-sign">So I wrote them down.</p>
+            <div className="author-actions"><a className="button button-primary" href="#checkout">{directoryCta} <ArrowRight size={17} /></a><a className="text-button" href="/">More about FayFay</a></div>
+          </div>
+        </div></section>
+
+        {/* 4 — The problem */}
         <section className="stakes shell section-space">
-          <div className="section-kicker"><span>01</span><p>The problem</p></div>
+          <div className="section-kicker"><span>03</span><p>The problem</p></div>
           <div className="stakes-layout"><h2>Ten thousand pieces. Per colour. Per design.</h2><div className="body-copy">
             <p>That is a normal minimum order at the Canton Fair. Not extreme. Normal.</p>
             <p>Take a modest garment at four dollars. Ten thousand pieces in three colours is a hundred and twenty thousand dollars — before freight, before duty, before you have sold one unit.</p>
@@ -171,10 +201,10 @@ export default function LandedPage() {
           </div></div>
         </section>
 
-        {/* 3 — What you do instead */}
+        {/* 5 — What you do instead */}
         <section className="promise dark-section"><div className="shell">
           <div className="promise-grid">
-            <div><div className="section-kicker light"><span>02</span><p>What you do instead</p></div><h2>There are close to a thousand markets around that building.</h2></div>
+            <div><div className="section-kicker light"><span>04</span><p>What you do instead</p></div><h2>There are close to a thousand markets around that building.</h2></div>
             <div className="promise-copy">
               <p>Guangzhou is a trading city inside a province that manufactures for most of the world. Around the fair complex sit close to a thousand specialised wholesale markets, open every day of the year, with minimums measured in dozens rather than tens of thousands. Behind those, in towns an hour or two away, are the factories that supply them.</p>
               <p>None of it closes when the fair closes. None of it requires a badge.</p>
@@ -184,9 +214,9 @@ export default function LandedPage() {
           <blockquote className="pull-quote"><span>“</span>You do not find out which address is wrong at your desk. You find out in a taxi.</blockquote>
         </div></section>
 
-        {/* 4 — Why the free lists fail */}
+        {/* 6 — Why the free lists fail */}
         <section className="why shell section-space">
-          <div className="section-kicker"><span>03</span><p>Why the free lists fail</p></div>
+          <div className="section-kicker"><span>05</span><p>Why the free lists fail</p></div>
           <div className="section-title-row"><h2>Everyone read the same page <em>you did.</em></h2><div>
             <p>Type any version of “Guangzhou wholesale market” into a search engine and almost every result is a blog post written by a sourcing agent. That is not a conspiracy, it is arithmetic — agents are the only people with a commercial reason to publish market lists, because the list is the advertisement.</p>
             <p>Three things follow.</p>
@@ -194,17 +224,17 @@ export default function LandedPage() {
           <div className="feature-grid">{failures.map(({ title, copy }, index) => <motion.article className="patterned-card" key={title} {...reveal} transition={{ ...reveal.transition, delay: index * .09 }}><CardPattern type={(['current', 'factory', 'independent'] as const)[index]} /><div className="card-content"><span>0{index + 1}</span><h3>{title}</h3><p>{copy}</p></div></motion.article>)}</div>
         </section>
 
-        {/* 5 — What's in the book */}
+        {/* 7 — What's in the book */}
         <section className="contents-section" id="inside"><div className="shell section-space">
-          <div className="section-kicker"><span>04</span><p>What’s in the book</p></div>
+          <div className="section-kicker"><span>06</span><p>What’s in the book</p></div>
           <div className="contents-heading"><h2>What’s in it</h2></div>
           <div className="inside-grid">{inside.map(({ icon: Icon, title, copy }, index) => <motion.article className="inside-card" key={title} {...reveal} transition={{ ...reveal.transition, delay: index * .09 }}><Icon size={22} aria-hidden="true" /><h3>{title}</h3><p>{copy}</p></motion.article>)}</div>
           <p className="inside-plus"><strong>Plus:</strong> entry, visas and badges — including the application window that closes days after the fair has already opened, and the invitation letter a small industry will happily sell you for money even though it is free.</p>
         </div></section>
 
-        {/* 6 — The live directory */}
+        {/* 8 — The live directory */}
         <section className="directory-section dark-section"><div className="shell section-space">
-          <div className="section-kicker light"><span>05</span><p>The live directory</p></div>
+          <div className="section-kicker light"><span>07</span><p>The live directory</p></div>
           <div className="directory-grid">
             <div className="directory-copy">
               <h2>A printed list starts dying the day it ships.</h2>
@@ -220,25 +250,9 @@ export default function LandedPage() {
           </div>
         </div></section>
 
-        {/* 7 — Who it's for */}
-        <section className="fit shell section-space"><div className="fit-grid">
-          <div><div className="section-kicker"><span>06</span><p>Who it’s for</p></div><h2>This is for you if…</h2><ul className="fit-list yes">
-            <li><Check />You buy from China, or you are about to.</li>
-            <li><Check />You are going to Guangzhou and want the days to count.</li>
-            <li><Check />You have been quoted a minimum you cannot meet.</li>
-            <li><Check />You suspect you are paying more than the person beside you.</li>
-            <li><Check />You want the address, not a contact form.</li>
-          </ul></div>
-          <div className="no-fit"><p className="mini-label">An honest no</p><h2>This is not for you if…</h2><ul className="fit-list no">
-            <li><X />You are looking for a supplier list to resell.</li>
-            <li><X />You want dropshipping suppliers or Alibaba alternatives.</li>
-            <li><X />You have never bought wholesale and want a beginner’s course.</li>
-          </ul></div>
-        </div></section>
-
-        {/* 8 — Pricing */}
+        {/* 9 — Pricing */}
         <section className="buy-section" id="pricing" ref={purchaseRef}><div className="shell section-space">
-          <div className="section-kicker light"><span>07</span><p>Pricing</p></div>
+          <div className="section-kicker light"><span>08</span><p>Pricing</p></div>
           <div className="single-tier">
             <div className="single-tier-intro">
               <h2>What it costs</h2>
@@ -257,18 +271,6 @@ export default function LandedPage() {
               <p className="sourcing-note">Want someone on the ground instead? <a href="/services">Sourcing, factory visits, inspection, consolidation and freight</a> are quoted per job. <a href={SOURCING_ENQUIRY_URL}>Tell us what you need</a>.</p>
               <small>Access is issued to one named subscriber and is personal and non-transferable, including within the same business. Digital product. See <a href="/terms-ebooks">terms</a> before purchase.</small>
             </div>
-          </div>
-        </div></section>
-
-        {/* 9 — About FayFay */}
-        <section className="author-section dark-section" id="author"><div className="shell author-grid">
-          <div className="author-portrait"><Image src="/images/landed/fayfay.jpg" alt="FayFay, founder of FAYFORT International Trading" fill sizes="(max-width: 700px) 100vw, 45vw" style={{ objectFit: 'cover', objectPosition: '50% 25%' }} /></div>
-          <div className="author-copy"><div className="section-kicker light"><span>08</span><p>About FayFay</p></div><h2>Who wrote this</h2>
-            <p>I run FAYFORT International Trading — a trading, logistics and consultancy company based in China. I have been here eight years. I speak the language, I know how the markets work, and more usefully, I know which of them are worth your time.</p>
-            <p>Most people buying from China are not buying from the factory. They are buying from someone who bought from someone who bought from the factory, and every one of those people took a margin. My work is going directly to the source — finding the factory, walking the market, checking the goods, packing them properly and getting them home.</p>
-            <p>I wrote this because I kept answering the same questions. Where do I buy hair? Why is this so expensive? Which market has men’s clothing? I went to Guangzhou for a week and came home with nothing.</p>
-            <p>The addresses in this book are the answer to most of them. They are not secret and they are not magic — they are just hard to find, because the people who know them do not write them down.</p>
-            <p className="author-sign">So I wrote them down.</p>
           </div>
         </div></section>
 

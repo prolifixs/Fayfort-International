@@ -8,8 +8,5 @@ export const PRICE_WAS_USD: number | null = 150
 // Shopify product page, used as the fallback link while the Shopify Buy Button loads.
 export const CHECKOUT_URL = 'https://8kjjz9-ei.myshopify.com/products/landed'
 
-// Shown in the FAQ only once written.
-export const REFUND_ANSWER: string | null = null
-
 export const formatPrice = (amount: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)

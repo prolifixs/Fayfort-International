@@ -8,8 +8,10 @@ import { ErrorBoundary } from '@/app/components/common/error/ErrorBoundary'
 import { Toaster } from '@/app/components/ui/toaster'
 
 export const metadata: Metadata = {
-  title: 'Fayfort International',
-  description: 'Fayfort International Trading — sourcing, catalog, and trade services.',
+  metadataBase: new URL('https://www.fayfort.com'),
+  title: 'FAYFORT International Trading',
+  description: 'Sourcing, inspection, consolidation and shipping from China, run by someone who lives here. Publisher of LANDED, the Guangzhou sourcing directory.',
+  openGraph: { siteName: 'FAYFORT International Trading', type: 'website', locale: 'en_GB' },
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
