@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ResolutionView } from '@/app/components/admin/product/resolution/ResolutionView'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { ProductWithRequests } from '@/app/components/types/database.types'
 import { toast } from 'react-hot-toast'
 
 export default function ResolutionPage() {
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const params = useParams()
   const router = useRouter()
   const [product, setProduct] = useState<ProductWithRequests | null>(null)

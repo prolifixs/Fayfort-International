@@ -8,7 +8,7 @@ import { SocialMediaLinks } from './SocialMediaLinks'
 import { AddressCard } from './AddressCard'
 import { motion } from 'framer-motion'
 import { MapPin, Share2 } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 interface ProfileInfoProps {
   user: {
@@ -41,7 +41,7 @@ export function ProfileInfo({ user }: ProfileInfoProps) {
 
   const handleAvatarUpdate = async (url: string) => {
     try {
-      const supabase = createClientComponentClient()
+      const supabase = createSupabaseBrowserClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) throw new Error('No user found')
@@ -107,7 +107,7 @@ export function ProfileInfo({ user }: ProfileInfoProps) {
             <h2 className="text-2xl font-semibold text-gray-900">Profile Information</h2>
             <button
               onClick={async () => {
-                const supabase = createClientComponentClient()
+                const supabase = createSupabaseBrowserClient()
                 await supabase.auth.signOut()
                 window.location.href = '/'
               }}

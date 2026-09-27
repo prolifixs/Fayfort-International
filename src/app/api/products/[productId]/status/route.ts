@@ -1,19 +1,19 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { RequestProcessingService } from '@/app/components/lib/requests/requestProcessor'
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ productId: string }> }
 ) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const params = await props.params
+  const supabase = await createSupabaseServerClient()
   const requestProcessor = new RequestProcessingService()
 
   try {
     const { data: product, error: productError } = await supabase
       .from('products')
       .select('requests(id, invoice_id)')
-      .eq('id', params.id)
+      .eq('id', params.productId)
       .single()
 
     if (productError) throw productError

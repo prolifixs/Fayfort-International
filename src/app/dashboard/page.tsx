@@ -5,7 +5,7 @@ import { RequestFlow } from '../components/dashboard/RequestFlow'
 import { UserRequestsTable } from '../components/dashboard/UserRequestsTable'
 import RequestFormModal from '../components/dashboard/RequestFormModal'
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/useToast'
 import { Database } from '@/app/components/types/database.types'
 import { NewArrivals } from '@/app/components/catalog/NewArrivals'
@@ -29,7 +29,7 @@ export default function DashboardPage() {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
   const [isRequestFormOpen, setIsRequestFormOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');

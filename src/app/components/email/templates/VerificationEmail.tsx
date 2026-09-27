@@ -43,7 +43,7 @@ export function VerificationEmail({
         </Alert>
 
         <Text style={EmailStyles.text}>
-          This code will expire in 1 hour. If you didn't request this verification,
+          This code will expire in 1 hour. If you didn&apos;t request this verification,
           please ignore this email.
         </Text>
       </Section>

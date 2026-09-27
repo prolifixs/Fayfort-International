@@ -1,14 +1,13 @@
 'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Database } from '@/app/components/types/database.types'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export class AvatarService {
   private supabase
   private readonly AVATAR_BUCKET = 'avatars'
 
   constructor() {
-    this.supabase = createClientComponentClient<Database>()
+    this.supabase = createSupabaseBrowserClient()
   }
 
   async uploadAvatar(file: File): Promise<string> {

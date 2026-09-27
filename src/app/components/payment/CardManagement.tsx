@@ -24,10 +24,6 @@ export function CardManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
-    loadSavedCards();
-  }, []);
-
-  useEffect(() => {
     if (stripe && elements) {
       setIsStripeReady(true);
       console.log('Stripe initialized successfully');
@@ -65,6 +61,10 @@ export function CardManagement() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadSavedCards();
+  }, []);
 
   const handleShowAddCard = () => {
     setIsDialogOpen(true);

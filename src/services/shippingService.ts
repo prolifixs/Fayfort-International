@@ -1,4 +1,4 @@
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface ShippingInfo {
   trackingNumber: string;
@@ -7,7 +7,7 @@ interface ShippingInfo {
 }
 
 export class ShippingService {
-  private supabase = createClientComponentClient();
+  private supabase = createSupabaseBrowserClient();
 
   async processShippingUpdate(requestId: string, shippingInfo: ShippingInfo): Promise<void> {
     console.group('🚢 Shipping Update Flow');

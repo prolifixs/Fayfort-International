@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import ProtectedRoute from '@/app/components/common/ProtectedRoute';
 import RequestsTable from '@/app/components/admin/RequestsTable';
 import { toast } from 'react-hot-toast';
-import type { Database } from '@/app/components/types/database.types';
 import { RequestStatus, RequestWithRelations, SortField } from '../components/types/request.types';
 import RequestFilters from '@/app/components/admin/RequestFilters';
 import { RequestGuide } from '@/app/components/dashboard/request/RequestGuide';
@@ -28,25 +27,7 @@ export default function RequestPage() {
   const [filteredRequests, setFilteredRequests] = useState<RequestWithRelations[]>([]);
 
   const itemsPerPage = 10;
-  const supabase = createClientComponentClient<Database>();
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('request_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'requests' }, 
-        () => fetchRequests()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchRequests();
-  }, []);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     // Initialize filteredRequests with all requests
@@ -100,6 +81,24 @@ export default function RequestPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('request_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'requests' }, 
+        () => fetchRequests()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleStatusChange = async (requestId: string, newStatus: RequestStatus) => {
     try {

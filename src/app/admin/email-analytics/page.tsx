@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { EmailAnalyticsDashboard } from '@/app/components/email/EmailAnalyticsDashboard'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import LoadingSpinner from '@/app/components/common/LoadingSpinner'
 
 export default function EmailAnalyticsPage() {
@@ -11,11 +11,7 @@ export default function EmailAnalyticsPage() {
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>('week')
 
-  const supabase = createClientComponentClient()
-
-  useEffect(() => {
-    fetchEmailIds()
-  }, [timeRange])
+  const supabase = createSupabaseBrowserClient()
 
   const fetchEmailIds = async () => {
     try {
@@ -40,6 +36,10 @@ export default function EmailAnalyticsPage() {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchEmailIds()
+  }, [timeRange])
 
   if (error) {
     return (

@@ -1,19 +1,20 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { use, useState, useEffect } from 'react'
 import { InvoiceDetail } from '@/app/components/common/invoice/InvoiceDetail'
 import { ArrowLeft } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Invoice, InvoiceStatus } from '@/app/components/types/invoice'
 import { StatusBadge } from '@/app/components/ui/StatusBadge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
 
-export default function InvoicePage({ params }: { params: { id: string } }) {
+export default function InvoicePage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params)
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const [showOrphanedDialog, setShowOrphanedDialog] = useState(false)
 
   const fetchInvoice = async () => {

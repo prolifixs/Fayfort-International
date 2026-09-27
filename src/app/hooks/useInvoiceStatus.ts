@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Invoice } from '@/app/components/types/invoice'
 import { useToast } from '@/hooks/useToast'
 import { createNotification } from '@/app/components/lib/notifications'
 
 export function useInvoiceStatus() {
   const [updating, setUpdating] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
 
   async function updateStatus(invoice: Invoice, newStatus: Invoice['status']) {

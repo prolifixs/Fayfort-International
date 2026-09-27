@@ -1,8 +1,8 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { EmailTrackingData } from '@/app/components/types/email'
 
 export class EmailTrackingService {
-  private supabase = createClientComponentClient()
+  private supabase = createSupabaseBrowserClient()
 
   async trackDeliveryStatus(emailId: string, status: 'delivered' | 'failed' | 'bounced') {
     try {

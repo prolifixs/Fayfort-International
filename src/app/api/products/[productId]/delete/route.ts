@@ -1,12 +1,12 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { SafeDeletionService } from '@/app/components/lib/deletion/safeDeletion'
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { productId: string } }
+  props: { params: Promise<{ productId: string }> }
 ) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const params = await props.params
+  const supabase = await createSupabaseServerClient()
   const deletionService = new SafeDeletionService()
 
   try {

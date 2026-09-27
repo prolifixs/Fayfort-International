@@ -1,10 +1,10 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database, TableRow } from '@/app/components/types/database.types'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import type { TableRow } from '@/app/components/types/database.types'
 
 type Category = TableRow<'categories'>
 
 export class CategoryService {
-  private supabase = createClientComponentClient<Database>()
+  private supabase = createSupabaseBrowserClient()
 
   async getCategories(): Promise<Category[]> {
     const { data, error } = await this.supabase

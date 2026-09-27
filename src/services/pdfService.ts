@@ -1,11 +1,11 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Invoice, InvoiceData } from '@/app/components/types/invoice';
 import { generateInvoicePDF } from '@/app/components/lib/pdf/generateInvoicePDF';
 
 export const pdfService = {
   async generateAndStore(invoice: Invoice): Promise<string> {
     console.log('📝 PDFService: Starting PDF generation and storage');
-    const supabase = createClientComponentClient();
+    const supabase = createSupabaseBrowserClient();
     
     try {
       const transformedInvoice: InvoiceData = {

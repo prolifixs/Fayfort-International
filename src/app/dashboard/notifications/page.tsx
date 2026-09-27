@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import { NotificationList } from '@/app/components/dashboard/notification/NotificationList'
 import { NotificationFilters } from '@/app/components/dashboard/notification/NotificationFilters'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/useToast'
 
 export default function NotificationsPage() {
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
   const [type, setType] = useState<'all' | 'status_change' | 'invoice_ready' | 'payment_received'>('all')
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
 
   const handleMarkAllAsRead = async () => {

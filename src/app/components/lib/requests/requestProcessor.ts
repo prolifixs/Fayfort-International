@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { InvoiceVerificationService } from '@/app/components/lib/invoice/statusVerification'
 import { InvoiceService } from '@/app/components/lib/invoice/invoiceService'
 import { NotificationType } from '@/services/notificationService'
@@ -68,7 +68,7 @@ const statusChangeMap: Record<RequestStatus, StatusChangeContext> = {
 }
 
 export class RequestProcessingService {
-  private supabase = createClientComponentClient()
+  private supabase = createSupabaseBrowserClient()
   private verificationService = new InvoiceVerificationService()
   private invoiceService = new InvoiceService()
 

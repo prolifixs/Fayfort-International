@@ -1,9 +1,9 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { pdfService } from './pdfService';
 import { emailService } from './emailService';
 
 export async function generateInvoice(requestId: string) {
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
   
   try {
     console.log('🔍 Fetching request:', requestId);

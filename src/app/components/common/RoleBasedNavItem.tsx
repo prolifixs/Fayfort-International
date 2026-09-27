@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 
 interface RoleBasedNavItemProps {
@@ -11,7 +11,7 @@ interface RoleBasedNavItemProps {
 
 export default function RoleBasedNavItem({ href, allowedRoles, children }: RoleBasedNavItemProps) {
   const [isAllowed, setIsAllowed] = useState(false);
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     const checkRole = async () => {

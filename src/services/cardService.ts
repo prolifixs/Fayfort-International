@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export interface SavedCard {
   id: string;
@@ -11,7 +11,7 @@ export interface SavedCard {
 }
 
 export class CardService {
-  private supabase = createClientComponentClient();
+  private supabase = createSupabaseBrowserClient();
 
   async saveCard(paymentMethodId: string, userId: string) {
     try {

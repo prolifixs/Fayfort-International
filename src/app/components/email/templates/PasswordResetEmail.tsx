@@ -50,9 +50,9 @@ export function PasswordResetEmail({
         )}
 
         <Text style={EmailStyles.text}>
-          This link will expire in 1 hour. If you didn't request a password reset,
-          please ignore this email or contact support if you're concerned.
-        </Text>
+          This link will expire in 1 hour. If you didn&apos;t request a password reset,
+          please ignore this email or contact support if you&apos;re concerned.
+             </Text>
       </Section>
     </BaseEmail>
   )

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 
 interface StatusHistoryModalProps {
@@ -22,7 +22,7 @@ interface StatusHistory {
 export default function StatusHistoryModal({ requestId, onClose }: StatusHistoryModalProps) {
   const [history, setHistory] = useState<StatusHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     async function fetchHistory() {

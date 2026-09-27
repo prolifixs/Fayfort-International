@@ -1,7 +1,5 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { Database } from '@/app/components/types/database.types'
 import { MediaService } from '@/services/MediaService'
 
 export async function POST(request: Request) {
@@ -18,7 +16,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = createRouteHandlerClient<Database>({ cookies })
+    const supabase = await createSupabaseServerClient()
     const mediaService = new MediaService(supabase)
 
     // Move files from temp to permanent storage

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 
@@ -27,7 +27,7 @@ export default function CheckEmailPage() {
     setError(null);
 
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createSupabaseBrowserClient();
       const { error: resendError } = await supabase.auth.resend({
         type: 'signup',
         email,
@@ -68,11 +68,11 @@ export default function CheckEmailPage() {
             </svg>
           </div>
           <p className="text-gray-600 mb-4">
-            We've sent a verification link to
+            We&apos;ve sent a verification link to
           </p>
           <p className="text-lg font-semibold text-blue-600 mb-6">{email}</p>
           <p className="text-sm text-gray-500 mb-8">
-            Click the link in the email to verify your account. If you don't see it, check your spam folder.
+            Click the link in the email to verify your account. If you don&apos;t see it, check your spam folder.
           </p>
 
           {error && (
@@ -83,7 +83,7 @@ export default function CheckEmailPage() {
 
           <div className="border-t border-gray-200 pt-6">
             <p className="text-sm text-gray-600 mb-4">
-              Didn't receive the email?
+              Didn&apos;t receive the email?
             </p>
             <button
               onClick={handleResendEmail}

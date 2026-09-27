@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { z } from 'zod'
-import type { Database } from '@/app/components/types/database.types'
 
 // Validation schemas
 const requestSchema = z.object({
@@ -14,7 +12,7 @@ const requestSchema = z.object({
 })
 
 export async function GET(request: Request) {
-  const supabase = createRouteHandlerClient<Database>({ cookies })
+  const supabase = await createSupabaseServerClient()
   const { searchParams } = new URL(request.url)
   
   try {
@@ -68,7 +66,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const supabase = createRouteHandlerClient<Database>({ cookies })
+  const supabase = await createSupabaseServerClient()
   
   try {
     const { data: { session } } = await supabase.auth.getSession()

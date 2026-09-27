@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { 
   CheckCircle, 
   XCircle, 
@@ -23,7 +23,20 @@ interface NotificationBadgeProps {
 
 export function NotificationBadge({ type, className }: NotificationBadgeProps) {
   const [count, setCount] = useState(0)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
+
+  async function fetchUnreadCount() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('read_status', false)
+
+    setCount(count || 0)
+  }
 
   useEffect(() => {
     fetchUnreadCount()
@@ -46,19 +59,6 @@ export function NotificationBadge({ type, className }: NotificationBadgeProps) {
       supabase.removeChannel(channel)
     }
   }, [])
-
-  async function fetchUnreadCount() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { count } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('read_status', false)
-
-    setCount(count || 0)
-  }
 
   const badges = {
     success: {

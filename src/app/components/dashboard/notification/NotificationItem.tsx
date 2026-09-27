@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Bell, CheckCircle, AlertCircle, FileText, CreditCard } from 'lucide-react'
 import { DashboardNotification } from '@/app/components/types/notifications'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 interface NotificationItemProps {
   notification: DashboardNotification
@@ -14,7 +14,7 @@ interface NotificationItemProps {
 
 export function NotificationItem({ notification, onMarkAsRead, onClick }: NotificationItemProps) {
   const [isRead, setIsRead] = useState(notification.read_status)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
 
   const getIcon = () => {
     switch (notification.type) {

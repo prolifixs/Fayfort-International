@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { RequestStatus } from '@/app/components/types/database.types'
 
 interface Request {
@@ -12,7 +12,22 @@ interface Request {
 
 export function useStatusUpdates(requestId?: string) {
   const [status, setStatus] = useState<RequestStatus | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
+
+  async function fetchStatus() {
+    try {
+      const { data, error } = await supabase
+        .from('requests')
+        .select('status')
+        .eq('id', requestId)
+        .single()
+
+      if (error) throw error
+      setStatus(data.status)
+    } catch (error) {
+      console.error('Error fetching status:', error)
+    }
+  }
 
   useEffect(() => {
     if (!requestId) return
@@ -41,21 +56,6 @@ export function useStatusUpdates(requestId?: string) {
       supabase.removeChannel(channel)
     }
   }, [requestId])
-
-  async function fetchStatus() {
-    try {
-      const { data, error } = await supabase
-        .from('requests')
-        .select('status')
-        .eq('id', requestId)
-        .single()
-
-      if (error) throw error
-      setStatus(data.status)
-    } catch (error) {
-      console.error('Error fetching status:', error)
-    }
-  }
 
   return { status }
 } 

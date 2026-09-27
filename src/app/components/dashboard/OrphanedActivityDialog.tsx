@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { useToast } from "@/app/components/ui/use-toast"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export function OrphanedActivityDialog({ 
   isOpen, 
@@ -17,7 +17,7 @@ export function OrphanedActivityDialog({
   onDeleted: () => void
 }) {
   const { toast } = useToast()
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
 
   const handleDelete = async () => {
     try {

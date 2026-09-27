@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { stripe } from '@/app/components/lib/stripe/server';
 
 // Add route configurations
 export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
 
 // Add type for request
 interface CreateIntentRequest {
@@ -28,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createSupabaseServerClient();
     
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session?.user) {

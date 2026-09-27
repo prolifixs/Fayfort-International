@@ -44,12 +44,6 @@ export function PaymentDialog({ isOpen, onClose, invoice, onPaymentSuccess }: Pa
   const MAX_PAYMENT_ATTEMPTS = 3
 
   useEffect(() => {
-    if (isOpen) {
-      loadSavedCards();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
     if (!invoice?.amount) {
       console.error('Invalid invoice data:', invoice);
       onClose();
@@ -78,6 +72,12 @@ export function PaymentDialog({ isOpen, onClose, invoice, onPaymentSuccess }: Pa
       console.error('Error loading cards:', error);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadSavedCards();
+    }
+  }, [isOpen]);
 
   const paymentOptions = [
     {
@@ -488,11 +488,11 @@ const handleSubmit = async (e: React.FormEvent) => {
               <div className="space-y-2">
                 <div>Thank you for your purchase! Your payment has been processed successfully.</div>
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">What's Next?</h4>
+                  <h4 className="font-medium text-blue-900 mb-2">What&apos;s Next?</h4>
                   <ul className="text-sm text-blue-800 space-y-1">
                     <li>• Your order is now being processed</li>
                     <li>• Please allow 2-5 business days for packaging</li>
-                    <li>• You'll receive shipping updates via email</li>
+                    <li>• You&apos;ll receive shipping updates via email</li>
                     <li>• Track your order status in the dashboard</li>
                   </ul>
                 </div>

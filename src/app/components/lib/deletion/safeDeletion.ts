@@ -1,7 +1,7 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export class SafeDeletionService {
-  private supabase = createClientComponentClient()
+  private supabase = createSupabaseBrowserClient()
 
   async verifyRequestCount(productId: string): Promise<boolean> {
     const { data, error } = await this.supabase

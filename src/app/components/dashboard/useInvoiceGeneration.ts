@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/useToast'
 
 interface InvoiceDetails {
@@ -13,7 +13,7 @@ interface InvoiceDetails {
 
 export function useInvoiceGeneration() {
   const [loading, setLoading] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
 
   async function generateInvoice(requestId: string) {

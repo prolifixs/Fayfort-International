@@ -1,13 +1,13 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { generatePDFKit } from '@/app/components/lib/pdf'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const params = await props.params
+  const supabase = await createSupabaseServerClient()
   
   try {
     const { data: { session } } = await supabase.auth.getSession()

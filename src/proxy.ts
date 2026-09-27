@@ -1,6 +1,7 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { AUTH_COOKIE_OPTIONS, SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/supabase/config'
 
 // The enterprise app (login, dashboard, admin, /api) is closed in production until its
 // access-control issues are fixed (docs/SECURITY-REVIEW.md). Set ENABLE_ENTERPRISE=true
@@ -15,7 +16,7 @@ const isPublicSitePath = (pathname: string) =>
 const isStaticAsset = (pathname: string) =>
   pathname.startsWith('/_next/') || pathname.startsWith('/images/') || /^\/[^/]+\.[a-z0-9]+$/i.test(pathname)
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   if (!ENTERPRISE_ENABLED) {
     const { pathname } = req.nextUrl
     if (isPublicSitePath(pathname) || isStaticAsset(pathname)) return NextResponse.next()
@@ -23,7 +24,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.rewrite(new URL('/__closed', req.url))
   }
 
-  const res = NextResponse.next()
+  let res = NextResponse.next({ request: req })
 
   const publicRoutes = [
     '/',
@@ -63,24 +64,38 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  const supabase = createMiddlewareClient({ req, res })
+  // Refreshed auth cookies go on both the forwarded request and the response.
+  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    cookieOptions: AUTH_COOKIE_OPTIONS,
+    cookies: {
+      getAll() {
+        return req.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
+        res = NextResponse.next({ request: req })
+        cookiesToSet.forEach(({ name, value, options }) => res.cookies.set(name, value, options))
+      },
+    },
+  })
 
-  const debugMiddleware = (message: string, data?: any) => {
+  const debugMiddleware = (message: string, data?: unknown) => {
     console.log(`🛡️ Middleware: ${message}`, data || '');
   };
 
   try {
     debugMiddleware('Checking session', { path: req.nextUrl.pathname });
-    const { data: { session } } = await supabase.auth.getSession();
-    debugMiddleware('Session status', { 
-      hasSession: !!session,
-      user: session?.user?.id,
-      role: session?.user?.user_metadata?.role 
+    // getUser() verifies the session with Supabase; getSession() would trust the cookie as-is.
+    const { data: { user } } = await supabase.auth.getUser();
+    debugMiddleware('Session status', {
+      hasSession: !!user,
+      user: user?.id,
+      role: user?.user_metadata?.role
     });
 
     // If we're already on the login page and have a session, redirect to dashboard
-    if (session && req.nextUrl.pathname === '/login') {
-      const redirectTo = session.user.user_metadata?.role === 'admin' ? '/admin' : '/dashboard';
+    if (user && req.nextUrl.pathname === '/login') {
+      const redirectTo = user.user_metadata?.role === 'admin' ? '/admin' : '/dashboard';
       return NextResponse.redirect(new URL(redirectTo, req.url));
     }
 
@@ -94,7 +109,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // If no session and not a public route, redirect to login
-    if (!session) {
+    if (!user) {
       const redirectUrl = req.nextUrl.clone()
       redirectUrl.pathname = '/login'
       redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname)
@@ -103,7 +118,7 @@ export async function middleware(req: NextRequest) {
 
     // Handle admin routes
     if (req.nextUrl.pathname.startsWith('/admin')) {
-      const userRole = session?.user?.user_metadata?.role;
+      const userRole = user.user_metadata?.role;
       if (userRole !== 'admin') {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
@@ -111,8 +126,8 @@ export async function middleware(req: NextRequest) {
 
     // Set user info in request header for API routes
     if (req.nextUrl.pathname.startsWith('/api/')) {
-      res.headers.set('x-user-id', session.user.id)
-      res.headers.set('x-user-role', session.user.user_metadata?.role || 'customer')
+      res.headers.set('x-user-id', user.id)
+      res.headers.set('x-user-role', user.user_metadata?.role || 'customer')
     }
 
     return res

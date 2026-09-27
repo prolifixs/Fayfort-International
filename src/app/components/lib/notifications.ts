@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { DashboardNotification, NotificationType, NotificationMetadata } from '@/app/components/types/notifications'
 
 export async function createNotification({
@@ -14,7 +14,7 @@ export async function createNotification({
   reference_type: string
   metadata?: Record<string, any>
 }) {
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   
   try {
     const { data: { user } } = await supabase.auth.getUser()

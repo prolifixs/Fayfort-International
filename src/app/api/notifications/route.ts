@@ -1,9 +1,8 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const supabase = await createSupabaseServerClient()
   const { searchParams } = new URL(request.url)
   const unreadOnly = searchParams.get('unread') === 'true'
   const page = parseInt(searchParams.get('page') || '1')
@@ -44,7 +43,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const supabase = await createSupabaseServerClient()
   const { id, action } = await request.json()
   
   const { data: { user } } = await supabase.auth.getUser()

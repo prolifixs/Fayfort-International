@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { RequestStatus } from '@/app/components/types/request.types';
 import { statusService, StatusService } from '@/services/statusService';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { toast } from 'react-hot-toast';
 import { createNotification } from '../lib/notifications';
 import { generateInvoice } from '@/services/invoiceService';
@@ -25,7 +25,7 @@ interface StatusUpdateDropdownProps {
 const orderStatuses: RequestStatus[] = ['pending', 'approved', 'rejected', 'fulfilled', 'shipped'];
 
 export function StatusUpdateDropdown({ request, onStatusChange, disabled = false }: StatusUpdateDropdownProps) {
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
   const [isOpen, setIsOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);

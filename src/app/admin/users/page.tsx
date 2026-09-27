@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import Pagination from '@/app/components/admin/Pagination';
-import type { Database } from '@/app/components/types/database.types';
 import ProtectedRoute from '@/app/components/common/ProtectedRoute';
 import { toast } from 'react-hot-toast';
 import { supabaseAdmin } from '@/app/components/lib/supabase'
@@ -40,19 +39,7 @@ export default function UsersManagement() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   const itemsPerPage = 10;
-  const supabase = createClientComponentClient<Database>();
-
-  useEffect(() => {
-    const channel = supabaseAdmin
-      .channel('admin_users')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, 
-        () => fetchUsers())
-      .subscribe();
-
-    return () => {
-      supabaseAdmin.removeChannel(channel);
-    };
-  }, []);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -63,10 +50,6 @@ export default function UsersManagement() {
     };
     getCurrentUser();
   }, []);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [currentPage, sortField, sortOrder, roleFilter, statusFilter, searchQuery]);
 
   const fetchUsers = async () => {
     try {
@@ -129,6 +112,22 @@ export default function UsersManagement() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, [currentPage, sortField, sortOrder, roleFilter, statusFilter, searchQuery]);
+
+  useEffect(() => {
+    const channel = supabaseAdmin
+      .channel('admin_users')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, 
+        () => fetchUsers())
+      .subscribe();
+
+    return () => {
+      supabaseAdmin.removeChannel(channel);
+    };
+  }, []);
 
   const handleStatusChange = async (userId: string, newStatus: 'active' | 'suspended') => {
     try {

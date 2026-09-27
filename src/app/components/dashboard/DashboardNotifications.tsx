@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Bell, X, FileText, CreditCard, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatDistanceToNow } from 'date-fns'
@@ -16,11 +16,20 @@ interface DashboardNotification {
   reference_id: string
 }
 
+function EmptyState() {
+  return (
+    <div className="p-8 text-center">
+      <Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+      <p className="text-gray-500 text-sm">No new notifications</p>
+    </div>
+  )
+}
+
 export function DashboardNotifications() {
   const [notifications, setNotifications] = useState<DashboardNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -196,26 +205,12 @@ export function DashboardNotifications() {
     }
   }
 
-  function EmptyState() {
-    return (
-      <div className="p-8 text-center">
-        <Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500 text-sm">No new notifications</p>
-      </div>
-    )
-  }
-
-  function NotificationsList({ notifications, onMarkAsRead }: { 
-    notifications: DashboardNotification[], 
-    onMarkAsRead: (id: string) => void 
-  }) {
-    const router = useRouter()
-
+  const renderNotificationsList = () => {
     const handleNotificationClick = (notification: DashboardNotification) => {
       if (notification.type === 'invoice_ready') {
         router.push(`/dashboard/invoices/${notification.reference_id}`)
       }
-      onMarkAsRead(notification.id)
+      markAsRead(notification.id)
     }
 
     return (
@@ -245,7 +240,11 @@ export function DashboardNotifications() {
                   </time>
                   {!notification.read_status && (
                     <button
-                      onClick={() => onMarkAsRead(notification.id)}
+                      onClick={(event) => {
+                        // Don't also trigger the row's click (which marks it read and may navigate).
+                        event.stopPropagation()
+                        markAsRead(notification.id)
+                      }}
                       className="text-xs flex items-center space-x-1 text-blue-600 hover:text-blue-800"
                     >
                       <CheckCircle className="h-3 w-3" />
@@ -303,7 +302,7 @@ export function DashboardNotifications() {
                 <EmptyState />
               ) : (
                 <>
-                  <NotificationsList notifications={notifications} onMarkAsRead={markAsRead} />
+                  {renderNotificationsList()}
                   <div className="p-4 border-t border-gray-100">
                     <button
                       onClick={() => router.push('/dashboard/notifications')}

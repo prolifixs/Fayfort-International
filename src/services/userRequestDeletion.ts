@@ -1,8 +1,7 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Database } from '@/app/components/types/database.types'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export class UserRequestDeletionService {
-  private supabase = createClientComponentClient<Database>()
+  private supabase = createSupabaseBrowserClient()
 
   async verifyUserOwnership(requestId: string): Promise<boolean> {
     const { data: { user } } = await this.supabase.auth.getUser()

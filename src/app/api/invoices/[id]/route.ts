@@ -1,13 +1,13 @@
 import { Invoice } from '@/app/components/types/invoice'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const params = await props.params
+  const supabase = await createSupabaseServerClient()
 
   try {
     // Check authentication
@@ -92,9 +92,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const params = await props.params
+  const supabase = await createSupabaseServerClient()
   
   try {
     const { data: { session } } = await supabase.auth.getSession()

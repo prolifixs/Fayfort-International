@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export const useFirstVisit = () => {
   const [isFirstVisit, setIsFirstVisit] = useState<boolean>(true);
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     const checkFirstVisit = async () => {

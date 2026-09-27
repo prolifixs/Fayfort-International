@@ -1,6 +1,6 @@
 import { EmailManager } from '../services/EmailManager';
 import { render } from '@react-email/render';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Invoice } from '@/app/components/types/invoice';
 import { InvoiceEmail } from '@/app/components/email/templates/InvoiceEmail';
 import { StatusChangeEmail } from '@/app/components/email/templates/StatusChangeEmail';
@@ -13,7 +13,7 @@ import { pdfService } from './pdfService';
 import { config } from '../config/env';
 
 export class EmailService extends EmailManager {
-  private supabase = createClientComponentClient();
+  private supabase = createSupabaseBrowserClient();
 
   private logEmailTrigger(type: string, recipient: string, metadata: any = {}) {
     console.log(`📧 Email Triggered:`, {

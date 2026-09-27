@@ -236,7 +236,7 @@ function RequestConfirmationDialog({
             <h4 className="font-medium text-sm">What happens next?</h4>
             <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
               <li>Our team will review your request</li>
-              <li>You'll receive approval notification</li>
+              <li>You&apos;ll receive approval notification</li>
               <li>Upon approval, an invoice will be generated</li>
               <li>Complete payment to proceed with the order</li>
             </ol>

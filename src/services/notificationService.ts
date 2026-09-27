@@ -1,5 +1,5 @@
 import { RequestStatus } from "@/app/components/types/request.types";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { EmailService } from "@/services/emailService";
 
 export type NotificationType = 
@@ -27,7 +27,7 @@ interface Notification {
 export class NotificationService {
   private readonly STORAGE_KEY = 'notifications';
   private listeners: ((notifications: Notification[]) => void)[] = [];
-  private supabase = createClientComponentClient();
+  private supabase = createSupabaseBrowserClient();
   private emailService = new EmailService();
 
   private getNotifications(): Notification[] {

@@ -56,10 +56,6 @@ export function ProductForm({ initialProduct, onSubmit }: ProductFormProps) {
   // Use tempProductId when initialProduct.id is not available
   const productId = initialProduct?.id || tempProductId
 
-  useEffect(() => {
-    loadCategories()
-  }, [])
-
   const loadCategories = async () => {
     try {
       const categoryService = new CategoryService()
@@ -69,6 +65,10 @@ export function ProductForm({ initialProduct, onSubmit }: ProductFormProps) {
       toast.error('Failed to load categories')
     }
   }
+
+  useEffect(() => {
+    loadCategories()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

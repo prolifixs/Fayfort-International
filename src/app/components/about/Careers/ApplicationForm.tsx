@@ -162,8 +162,8 @@ export function ApplicationForm({ jobId, jobTitle }: Props) {
     }
   }
 
-  // Add progress bar component to the resume upload section
-  const UploadProgress = () => {
+  // Progress bar for the resume upload section
+  const renderUploadProgress = () => {
     if (!isUploading) return null
 
     return (
@@ -193,7 +193,7 @@ export function ApplicationForm({ jobId, jobTitle }: Props) {
       {submitSuccess ? (
         <div className="text-center text-green-600 py-8">
           <p className="text-xl font-medium">Application Submitted Successfully!</p>
-          <p className="mt-2">We'll review your application and get back to you soon.</p>
+          <p className="mt-2">We&apos;ll review your application and get back to you soon.</p>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -301,7 +301,7 @@ export function ApplicationForm({ jobId, jobTitle }: Props) {
                 {fileError && (
                   <p className="text-sm text-red-600">{fileError.message}</p>
                 )}
-                <UploadProgress />
+                {renderUploadProgress()}
               </div>
             </div>
           </div>

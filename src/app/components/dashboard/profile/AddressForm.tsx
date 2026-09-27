@@ -8,7 +8,7 @@ import { AddressList } from './AddressList'
 import { z } from 'zod'
 import LoadingSpinner from '@/app/components/common/LoadingSpinner'
 import type { Database } from '@/app/components/types/database.types'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 type Address = Database['public']['Tables']['shipping_address']['Row']
 
@@ -40,15 +40,9 @@ export function AddressForm() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [isSettingDefault, setIsSettingDefault] = useState<string | null>(null)
 
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createSupabaseBrowserClient()
 
   // Fetch addresses on component mount
-  useEffect(() => {
-    if (user?.id) {
-      fetchAddresses()
-    }
-  }, [user])
-
   const fetchAddresses = async () => {
     try {
       const { data, error } = await supabase
@@ -67,6 +61,12 @@ export function AddressForm() {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchAddresses()
+    }
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

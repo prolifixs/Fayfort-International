@@ -1,17 +1,16 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import { Database } from '@/app/components/types/database.types'
 import { TableRow } from '@/app/components/types/database.types'
 import { MediaService } from '@/services/MediaService'
 
 type ProductMedia = TableRow<'product_media'>
 
 export class MediaUploadManager {
-  private supabase: SupabaseClient<Database>
+  private supabase: SupabaseClient
   private readonly TEMP_BUCKET = 'temp-products'
   private readonly STORAGE_BUCKET = 'products'
   private mediaService: MediaService
 
-  constructor(supabase: SupabaseClient<Database>) {
+  constructor(supabase: SupabaseClient) {
     this.supabase = supabase
     this.mediaService = new MediaService(supabase)
   }

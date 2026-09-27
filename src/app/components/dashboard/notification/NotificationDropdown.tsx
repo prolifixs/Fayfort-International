@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Bell, Check } from 'lucide-react'
 import { NotificationIcon } from './NotificationIcon'
 import { NotificationBadge } from './NotificationBadge'
@@ -17,27 +17,17 @@ export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotifications()
-    }
-    const subscription = subscribeToNotifications()
-    return () => {
-      subscription()
-    }
-  }, [isOpen])
-
-  useEffect(() => {
-    updateUnreadCount(notifications)
-  }, [notifications])
 
   function updateUnreadCount(notifs: Notification[]) {
     const count = notifs.filter(n => !n.read_status).length
     setUnreadCount(count)
   }
+
+  useEffect(() => {
+    updateUnreadCount(notifications)
+  }, [notifications])
 
   function subscribeToNotifications() {
     const channel = supabase
@@ -125,6 +115,16 @@ export function NotificationDropdown() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchNotifications()
+    }
+    const subscription = subscribeToNotifications()
+    return () => {
+      subscription()
+    }
+  }, [isOpen])
 
   async function markAsRead(id: string) {
     try {

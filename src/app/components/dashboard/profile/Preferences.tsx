@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useUsers } from '@/app/hooks/useUsers'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useToast } from '@/app/hooks/useToast'
 import LoadingSpinner from '@/app/components/common/LoadingSpinner'
 
@@ -28,15 +28,8 @@ export function Preferences() {
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
-
-  useEffect(() => {
-    if (user?.id) {
-      loadPreferences()
-      setupRealtimeSubscription()
-    }
-  }, [user?.id])
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
@@ -118,6 +111,13 @@ export function Preferences() {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (user?.id) {
+      loadPreferences()
+      setupRealtimeSubscription()
+    }
+  }, [user?.id])
 
   const handlePreferenceChange = async (
     category: 'notification_preferences' | 'email_preferences',

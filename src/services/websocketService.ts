@@ -1,5 +1,5 @@
 import { RequestStatus } from "./statusService";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface WebSocketMessage {
   type: string;
@@ -175,7 +175,7 @@ class WebSocketService {
 
 export const websocketService = {
   subscribe(event: string, callback: (data: any) => void) {
-    const supabase = createClientComponentClient();
+    const supabase = createSupabaseBrowserClient();
     
     const channel = supabase
       .channel('request_updates')
@@ -198,7 +198,7 @@ export const websocketService = {
   },
 
   subscribeToStatus(callback: (status: ConnectionStatus) => void) {
-    const supabase = createClientComponentClient();
+    const supabase = createSupabaseBrowserClient();
     const channel = supabase
       .channel('status')
       .subscribe((status) => callback(status === 'SUBSCRIBED' ? 'connected' : 'disconnected'));

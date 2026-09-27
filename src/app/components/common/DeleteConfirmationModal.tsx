@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/app/components/ui/button'
 import { useState } from 'react'
 import { RequestProcessingService } from '@/app/components/lib/requests/requestProcessor'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 import { UserRequestDeletionService } from '@/services/userRequestDeletion'
 
@@ -45,7 +45,7 @@ export function DeleteConfirmationModal({
   const [error, setError] = useState<string | null>(null)
   const requestProcessor = new RequestProcessingService()
   const deletionService = new UserRequestDeletionService()
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
 
   const handleDelete = async () => {
     if (!confirmed) return

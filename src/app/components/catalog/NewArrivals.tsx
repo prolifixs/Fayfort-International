@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ProductCard } from '@/app/components/common/ProductCard/ProductCard';
 import { useRouter } from 'next/navigation';
 import type { Database } from '@/app/components/types/database.types';
@@ -21,12 +21,8 @@ type Product = Database['public']['Tables']['products']['Row'] & {
 export function NewArrivals() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClientComponentClient<Database>();
+  const supabase = createSupabaseBrowserClient();
   const router = useRouter();
-
-  useEffect(() => {
-    fetchNewArrivals();
-  }, []);
 
   const fetchNewArrivals = async () => {
     try {
@@ -51,6 +47,10 @@ export function NewArrivals() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchNewArrivals();
+  }, []);
 
   return (
     <div className="bg-white shadow rounded-lg p-6 mb-8">

@@ -1,11 +1,11 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
-import { Session, User } from '@supabase/auth-helpers-nextjs';
+import { Session, User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { WeakPassword } from '@supabase/supabase-js';
 import { supabase, getRedirectUrl } from '@/app/components/lib/supabase';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { toast } from 'react-hot-toast';
 import { supabaseAdmin } from '@/app/components/lib/supabase';
 
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isNewUser, setIsNewUser] = useState<boolean>(true);
 
   // Add debug logging
-  const debugAuth = (message: string, data?: any) => {
+  const debugAuth = (message: string, data?: unknown) => {
     if (process.env.NODE_ENV === 'development') {
       console.log(`🔐 Auth Debug: ${message}`, data || '');
     }

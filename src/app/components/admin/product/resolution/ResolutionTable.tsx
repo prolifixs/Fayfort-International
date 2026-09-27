@@ -5,7 +5,7 @@ import { Badge } from '@/app/components/ui/badge'
 import { Button } from '@/app/components/ui/button'
 import StatusDropdown from './StatusDropdown'
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 
 type Request = TableRow<'requests'> & {
@@ -36,7 +36,7 @@ export function ResolutionTable({
   productId
 }: ResolutionTableProps) {
   const [deletedRequests, setDeletedRequests] = useState<Set<string>>(new Set())
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

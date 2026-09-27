@@ -17,7 +17,7 @@ export function AboutHero() {
             <span className="block text-blue-600">Product Sourcing</span>
           </h1>
           <p className="mt-6 max-w-2xl mx-auto text-xl text-gray-500">
-            We're building the future of B2B commerce with AI-powered solutions that connect businesses with reliable suppliers worldwide.
+            We&apos;re building the future of B2B commerce with AI-powered solutions that connect businesses with reliable suppliers worldwide.
           </p>
         </MotionDiv>
       </div>

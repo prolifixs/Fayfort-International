@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/useToast'
 import { Switch } from '@/app/components/ui/switch'
 import { Card, CardHeader, CardContent } from '@/app/components/ui/card'
@@ -21,12 +21,8 @@ export function EmailPreferences() {
     promotional: false
   })
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
-
-  useEffect(() => {
-    loadPreferences()
-  }, [])
 
   async function loadPreferences() {
     try {
@@ -54,6 +50,10 @@ export function EmailPreferences() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadPreferences()
+  }, [])
 
   async function updatePreference(key: keyof EmailPreferences, value: boolean) {
     try {
@@ -95,7 +95,7 @@ export function EmailPreferences() {
       <CardHeader>
         <h2 className="text-lg font-semibold">Email Notifications</h2>
         <p className="text-sm text-gray-500">
-          Choose which emails you'd like to receive
+          Choose which emails you&apos;d like to receive
         </p>
       </CardHeader>
       <CardContent className="space-y-6">

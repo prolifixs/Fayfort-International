@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast'
 import { checkPasswordStrength } from '@/app/utils/passwordStrength'
 import { validateEmail, validatePassword } from '../utils/auth'
 import { z } from 'zod'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { emailService } from '@/services/emailService'
 
 interface RegisterFormData {
@@ -95,7 +95,7 @@ export default function RegisterPage() {
       const validatedData = registerSchema.parse(formData);
       console.log('3. Schema validation passed');
 
-      const supabase = createClientComponentClient();
+      const supabase = createSupabaseBrowserClient();
       console.log('4. Supabase client created');
       
       const { data: authData, error: signUpError } = await supabase.auth.signUp({

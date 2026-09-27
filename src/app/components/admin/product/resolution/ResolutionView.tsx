@@ -11,7 +11,7 @@ import { RequestProcessingService } from '@/app/components/lib/requests/requestP
 import { Badge } from '@/app/components/ui/badge'
 import { Button } from '@/app/components/ui/button'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { supabase } from '../../../lib/supabase'
 import type { RequestStatus as InvoiceRequestStatus } from '@/app/components/types/invoice'
 import type { User } from '@/app/components/types/database.types'
@@ -76,10 +76,6 @@ export function ResolutionView({ product, onStatusChange }: ResolutionViewProps)
   }, [product.id])
 
   useEffect(() => {
-    filterRequests()
-  }, [statusFilter, invoiceFilter, product.requests])
-
-  useEffect(() => {
     const subscription = supabase
       .channel('request-deletions')
       .on(
@@ -114,6 +110,10 @@ export function ResolutionView({ product, onStatusChange }: ResolutionViewProps)
 
     setFilteredRequests(filtered);
   }
+
+  useEffect(() => {
+    filterRequests()
+  }, [statusFilter, invoiceFilter, product.requests])
 
   const handleNotify = async () => {
     setProcessing(true)

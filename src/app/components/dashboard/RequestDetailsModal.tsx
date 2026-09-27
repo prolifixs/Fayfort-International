@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { StatusBadge } from '../ui/StatusBadge'
 import { Loader2 } from 'lucide-react'
@@ -30,13 +30,7 @@ interface RequestDetailsModalProps {
 export function RequestDetailsModal({ requestId, onClose }: RequestDetailsModalProps) {
   const [details, setDetails] = useState<RequestDetails | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
-
-  useEffect(() => {
-    if (requestId) {
-      fetchRequestDetails()
-    }
-  }, [requestId])
+  const supabase = createSupabaseBrowserClient()
 
   async function fetchRequestDetails() {
     try {
@@ -59,6 +53,12 @@ export function RequestDetailsModal({ requestId, onClose }: RequestDetailsModalP
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (requestId) {
+      fetchRequestDetails()
+    }
+  }, [requestId])
 
   return (
     <Dialog open={!!requestId} onOpenChange={() => onClose()}>

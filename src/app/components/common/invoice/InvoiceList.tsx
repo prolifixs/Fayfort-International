@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/useToast'
 import { Download, Eye, Filter } from 'lucide-react'
 import { PDFPreview } from './PDFPreview'
@@ -22,14 +22,14 @@ import { InvoiceDetail } from './InvoiceDetail'
 import { Dialog } from '@headlessui/react'
 
 interface InvoiceListProps {
-  renderPaymentButton?: (invoice: any) => JSX.Element;
+  renderPaymentButton?: (invoice: any) => React.JSX.Element;
 }
 
 export function InvoiceList({ renderPaymentButton }: InvoiceListProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
   const { updateStatus, updating } = useInvoiceStatus()
 

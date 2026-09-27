@@ -44,7 +44,7 @@ export function NotificationEmail({
       </Section>
 
       <Text style={EmailStyles.text}>
-        If you have any questions, please don't hesitate to contact our support team.
+        If you have any questions, please don&apos;t hesitate to contact our support team.
       </Text>
     </BaseEmail>
   )

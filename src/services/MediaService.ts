@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
-import { Database } from '@/app/components/types/database.types'
 import { TableRow } from '@/app/components/types/database.types'
 import { SupabaseClient } from '@supabase/supabase-js'
 
 type ProductMedia = TableRow<'product_media'>
 
 export class MediaService {
-  private supabase: SupabaseClient<Database>
+  private supabase: SupabaseClient
   private readonly STORAGE_BUCKET = 'products'
   private readonly TEMP_BUCKET = 'temp-products'
   private readonly VIDEO_PATTERNS = [
@@ -14,7 +13,7 @@ export class MediaService {
     /^(https?:\/\/)?(www\.)?(vimeo\.com\/)(\d+)/
   ]
 
-  constructor(supabase: SupabaseClient<Database>) {
+  constructor(supabase: SupabaseClient) {
     this.supabase = supabase
     console.log('🔧 MediaService initialized')
   }
@@ -370,7 +369,7 @@ export class MediaService {
   }
 }
 
-export const mediaService = new MediaService(createClient<Database>(
+export const mediaService = new MediaService(createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )) 

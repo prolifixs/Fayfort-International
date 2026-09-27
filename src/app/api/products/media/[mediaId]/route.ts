@@ -1,15 +1,15 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { Database } from '@/app/components/types/database.types'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { mediaId: string } }
+  props: { params: Promise<{ mediaId: string }> }
 ) {
+  const params = await props.params;
   console.log('🗑️ Delete media request received for mediaId:', params.mediaId);
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies })
+    const supabase = await createSupabaseServerClient()
 
     console.log('🔍 Fetching media info before deletion...');
     const { data: media, error: fetchError } = await supabase

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import StatisticsChart from '../components/admin/charts/StatisticsChart';
 
@@ -26,7 +26,7 @@ interface ChartData {
 }
 
 async function fetchAllRequests() {
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   
   const { data, error } = await supabase
     .from('requests')
@@ -73,46 +73,10 @@ export default function AdminDashboard() {
   });
   const [filterRange, setFilterRange] = useState<'week' | 'month' | 'year'>('week');
   
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
 
   // Fetch initial data
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
   // Set up real-time subscriptions
-  useEffect(() => {
-    const requestsSubscription = supabase
-      .channel('requests-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'requests' },
-        () => fetchDashboardData()
-      )
-      .subscribe();
-
-    const productsSubscription = supabase
-      .channel('products-changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'products' },
-        () => fetchDashboardData()
-      )
-      .subscribe();
-
-    const usersSubscription = supabase
-      .channel('users-changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'users' },
-        () => fetchDashboardData()
-      )
-      .subscribe();
-
-    return () => {
-      requestsSubscription.unsubscribe();
-      productsSubscription.unsubscribe();
-      usersSubscription.unsubscribe();
-    };
-  }, [supabase]);
-
   async function fetchDashboardData() {
     try {
       console.log('[Dashboard] Starting data fetch...');
@@ -178,6 +142,42 @@ export default function AdminDashboard() {
     }
   }
 
+  useEffect(() => {
+    const requestsSubscription = supabase
+      .channel('requests-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'requests' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    const productsSubscription = supabase
+      .channel('products-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    const usersSubscription = supabase
+      .channel('users-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    return () => {
+      requestsSubscription.unsubscribe();
+      productsSubscription.unsubscribe();
+      usersSubscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
   const handleFilterChange = async (range: string) => {
     setFilterRange(range as 'week' | 'month' | 'year');
     await fetchChartData(range as 'week' | 'month' | 'year');
@@ -185,7 +185,7 @@ export default function AdminDashboard() {
 
   const fetchChartData = async (range: 'week' | 'month' | 'year' = 'week') => {
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createSupabaseBrowserClient();
       
       // Calculate date range
       const daysToFetch = range === 'week' ? 7 : range === 'month' ? 30 : 365;

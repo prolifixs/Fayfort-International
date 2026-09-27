@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 
@@ -22,7 +22,7 @@ export default function VerifyEmailPage() {
           throw new Error('Invalid verification link');
         }
 
-        const supabase = createClientComponentClient();
+        const supabase = createSupabaseBrowserClient();
         
         // Call the verify API route
         const response = await fetch(`/api/auth/verify?token=${token}&type=${type}`);

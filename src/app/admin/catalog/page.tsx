@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import Pagination from '@/app/components/admin/Pagination';
 import Toast from '@/app/components/ui/status/Toast';
@@ -53,7 +53,16 @@ export default function CatalogManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const productsPerPage = 10;
-  const supabase = createClientComponentClient<Database>();
+  const supabase = createSupabaseBrowserClient();
+
+  // Handle real-time updates
+  const handleRealtimeUpdate = (payload: any) => {
+    if (payload.eventType === 'UPDATE') {
+      setProducts(prev => prev.map(product =>
+        product.id === payload.new.id ? { ...product, ...payload.new } : product
+      ));
+    }
+  };
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -110,15 +119,6 @@ export default function CatalogManagement() {
     }
   }, [activeTab, sortConfigs]);
 
-  // Handle real-time updates
-  const handleRealtimeUpdate = (payload: any) => {
-    if (payload.eventType === 'UPDATE') {
-      setProducts(prev => prev.map(product => 
-        product.id === payload.new.id ? { ...product, ...payload.new } : product
-      ));
-    }
-  };
-
   // Effect to refetch when tab changes
   useEffect(() => {
     const cleanup = fetchProducts();
@@ -126,6 +126,11 @@ export default function CatalogManagement() {
       cleanup.then(unsubscribe => unsubscribe?.());
     };
   }, [activeTab, fetchProducts]);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -144,11 +149,6 @@ export default function CatalogManagement() {
 
     fetchCategories();
   }, []);
-
-  const showToast = (type: 'success' | 'error', message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   const handleSort = async (newSortConfigs: SortConfig[]) => {
     console.log('🔄 Sort triggered with configs:', newSortConfigs);

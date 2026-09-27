@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { StatusBadge } from './StatusBadge'
 import { StatusChangeForm } from './StatusChangeForm'
 import { useStatusUpdates } from './useStatusUpdates'
@@ -21,7 +21,7 @@ export function RequestFlow({ requestId }: { requestId: string }) {
   const [request, setRequest] = useState<Request | null>(null)
   const [loading, setLoading] = useState(true)
   const { status } = useStatusUpdates(requestId)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
 
   useEffect(() => {

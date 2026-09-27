@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { UserRequestsTable } from '@/app/components/dashboard/UserRequestsTable'
 import RequestFormModal from '@/app/components/dashboard/RequestFormModal'
 import { useToast } from '@/hooks/useToast'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { Database } from '@/app/components/types/database.types'
 
 type Product = Database['public']['Tables']['products']['Row']
@@ -12,7 +12,7 @@ type Product = Database['public']['Tables']['products']['Row']
 export default function RequestsPage() {
   const [isRequestFormOpen, setIsRequestFormOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
 
   const handleNewRequest = async (formData: any) => {

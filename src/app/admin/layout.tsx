@@ -3,7 +3,7 @@ import ProtectedRoute from '@/app/components/common/ProtectedRoute'
 import { supabaseAdmin } from '@/app/components/lib/supabase'
 
 export async function generateMetadata() {
-  const headersList = headers()
+  const headersList = await headers()
   const token = headersList.get('authorization')
   
   if (token) {

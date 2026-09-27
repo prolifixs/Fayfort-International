@@ -28,7 +28,7 @@ interface StatusBadgeProps {
   label?: string | number
 }
 
-const statusStyles: Record<AllStatus, { bg: string; text: string; icon: JSX.Element }> = {
+const statusStyles: Record<AllStatus, { bg: string; text: string; icon: React.JSX.Element }> = {
   // Request statuses
   pending: { 
     bg: 'bg-yellow-100', 

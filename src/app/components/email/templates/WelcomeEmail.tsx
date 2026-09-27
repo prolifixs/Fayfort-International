@@ -21,7 +21,7 @@ export function WelcomeEmail({
     >
       <Section>
         <Text style={EmailStyles.text}>
-          Thank you for joining FayfortEnterprise! We're excited to have you on board.
+          Thank you for joining FayfortEnterprise! We&apos;re excited to have you on board.
         </Text>
 
         <Text style={EmailStyles.text}>
@@ -33,14 +33,14 @@ export function WelcomeEmail({
         </Button>
 
         <Text style={EmailStyles.text}>
-          This verification link will expire in 24 hours. If you didn't create an account,
+          This verification link will expire in 24 hours. If you didn&apos;t create an account,
           you can safely ignore this email.
         </Text>
       </Section>
 
       <Section style={{ backgroundColor: '#f9fafb' }}>
         <Text style={{ ...EmailStyles.text, fontWeight: '600' }}>
-          What's next?
+          What&apos;s next?
         </Text>
         <Text style={EmailStyles.text}>
           • Complete your profile<br />

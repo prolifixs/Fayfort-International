@@ -1,25 +1,9 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
-import { Database } from '@/app/components/types/database.types'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uxbakpeeqydatgvvdyaa.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-anon-key-for-local-dev'
-
-if (!supabaseUrl) throw new Error('Missing Supabase URL')
-if (!supabaseAnonKey) throw new Error('Missing Supabase Anon Key')
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { SUPABASE_ANON_KEY as supabaseAnonKey, SUPABASE_URL as supabaseUrl } from '@/lib/supabase/config'
 
 // Create single client instance for regular user operations
-export const supabase = createClientComponentClient<Database>({
-  supabaseUrl,
-  supabaseKey: supabaseAnonKey,
-  cookieOptions: {
-    name: 'fayfort-auth',
-    path: '/',
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    domain: typeof window !== 'undefined' ? window.location.hostname : undefined
-  }
-})
+export const supabase = createSupabaseBrowserClient()
 
 // Create admin client with service role key for administrative operations
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'dummy-service-role-key-for-local-dev'
@@ -28,13 +12,14 @@ if (!serviceRoleKey) {
 }
 
 // Debug logging for admin operations
-const debugAdmin = (operation: string, details?: any) => {
+const debugAdmin = (operation: string, details?: unknown) => {
   if (process.env.NODE_ENV === 'development') {
     console.log(`🔑 Admin Operation: ${operation}`, details || '');
   }
 };
 
-export const supabaseAdmin = new Proxy(createClient<Database>(
+// Untyped for the same reason as the clients in src/lib/supabase (see config.ts there).
+export const supabaseAdmin = new Proxy(createClient(
   supabaseUrl,
   serviceRoleKey,
   {
@@ -45,10 +30,10 @@ export const supabaseAdmin = new Proxy(createClient<Database>(
     }
   }
 ), {
-  get(target: any, prop: string | symbol) {
-    const value = (target as any)[prop];
+  get(target, prop) {
+    const value = Reflect.get(target, prop);
     if (typeof value === 'function') {
-      return (...args: any[]) => {
+      return (...args: unknown[]) => {
         debugAdmin(`Calling ${String(prop)}`, { args });
         return value.apply(target, args);
       };

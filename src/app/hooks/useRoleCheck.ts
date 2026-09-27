@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export function useRoleCheck() {
   const [roleCache] = useState(new Map())
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   
   const checkRole = useCallback(async (userId: string) => {
     if (roleCache.has(userId)) return roleCache.get(userId)

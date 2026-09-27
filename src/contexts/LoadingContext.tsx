@@ -18,8 +18,8 @@ const LoadingContext = createContext<{
 } | null>(null)
 
 export function LoadingProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer<React.Reducer<LoadingState, LoadingAction>>(
-    (state, action) => {
+  const [state, dispatch] = useReducer(
+    (state: LoadingState, action: LoadingAction): LoadingState => {
       switch (action.type) {
         case 'START_LOADING': {
           const newTasks = new Set([...state.loadingTasks, action.taskId])

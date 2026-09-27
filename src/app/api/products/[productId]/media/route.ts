@@ -1,17 +1,16 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { MediaService } from '@/services/MediaService'
-import { Database } from '@/app/components/types/database.types'
 
 export async function POST(
   request: Request,
-  { params }: { params: { productId: string } }
+  props: { params: Promise<{ productId: string }> }
 ) {
+  const params = await props.params
   console.log('🎯 API route hit with productId:', params.productId)
   
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies })
+    const supabase = await createSupabaseServerClient()
     const mediaService = new MediaService(supabase)
     const contentType = request.headers.get('content-type') || ''
     console.log('📋 Content-Type:', contentType)
@@ -76,10 +75,11 @@ export async function POST(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { productId: string } }
+  props: { params: Promise<{ productId: string }> }
 ) {
+  const params = await props.params
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies })
+    const supabase = await createSupabaseServerClient()
     const mediaService = new MediaService(supabase)
     const { mediaIds } = await request.json()
 

@@ -15,15 +15,6 @@ export function PDFPreview({ invoice }: PDFPreviewProps) {
   const [error, setError] = useState<string | null>(null)
   const [pdfUrl, setPdfUrl] = useState(invoice.pdf_url)
 
-  useEffect(() => {
-    console.log('PDFPreview mounted:', { invoice, isGenerating, pdf_url: invoice.pdf_url })
-    if (!invoice.pdf_url) {
-      generatePDF()
-    } else {
-      setPdfUrl(invoice.pdf_url)
-    }
-  }, [invoice])
-
   const generatePDF = async () => {
     try {
       setIsGenerating(true)
@@ -32,7 +23,6 @@ export function PDFPreview({ invoice }: PDFPreviewProps) {
       const data = await response.json()
       
       const pdfUrl = await pdfService.generateAndStore(data)
-      invoice.pdf_url = pdfUrl
       setPdfUrl(pdfUrl)
     } catch (error) {
       console.error('PDF generation failed:', error)
@@ -41,6 +31,15 @@ export function PDFPreview({ invoice }: PDFPreviewProps) {
       setIsGenerating(false)
     }
   }
+
+  useEffect(() => {
+    console.log('PDFPreview mounted:', { invoice, isGenerating, pdf_url: invoice.pdf_url })
+    if (!invoice.pdf_url) {
+      generatePDF()
+    } else {
+      setPdfUrl(invoice.pdf_url)
+    }
+  }, [invoice])
 
   return (
     <div className="flex flex-col h-full">

@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { stripe } from '@/app/components/lib/stripe/server'
 
 // Add these export configurations
 export const dynamic = 'force-dynamic'
-export const runtime = 'edge'
 
 // Add type for the request
 interface ConfirmPaymentRequest {
@@ -26,7 +24,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createSupabaseServerClient()
 
     // Verify payment intent status
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)

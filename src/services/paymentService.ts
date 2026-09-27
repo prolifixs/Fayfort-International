@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Invoice, RequestStatus } from '@/app/components/types/invoice'
 import { NotificationService } from '@/services/notificationService'
 import { config } from '../config/env'
@@ -6,7 +6,7 @@ import Stripe from 'stripe'
 import { stripe } from '@/app/components/lib/stripe/server'
 
 export class PaymentService {
-  private supabase = createClientComponentClient()
+  private supabase = createSupabaseBrowserClient()
   private stripe: Stripe
 
   constructor() {

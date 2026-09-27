@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { InvoiceList } from '@/app/components/common/invoice/InvoiceList'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
@@ -12,7 +12,7 @@ export default function InvoicesPage() {
   const router = useRouter()
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
 
   useEffect(() => {
     // Subscribe to invoice updates

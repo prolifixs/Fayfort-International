@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
 import { ArrowDown, ArrowRight, Check, ClipboardCheck, Factory, MapPin, PackageSearch, RotateCcw, SearchCheck, ShieldCheck, Store, X } from 'lucide-react'
 import ShopifyBuyButton from '../../components/ShopifyBuyButton'
@@ -188,7 +189,7 @@ export default function LandedPage() {
             <p>I wrote this because I kept answering the same questions. Where do I buy hair? Why is this so expensive? Which market has men’s clothing? I went to Guangzhou for a week and came home with nothing.</p>
             <p>The addresses in this book are the answer to most of them. They are not secret and they are not magic — they are just hard to find, because the people who know them do not write them down.</p>
             <p className="author-sign">So I wrote them down.</p>
-            <div className="author-actions"><a className="button button-primary" href="#checkout">{directoryCta} <ArrowRight size={17} /></a><a className="text-button" href="/">More about FayFay</a></div>
+            <div className="author-actions"><a className="button button-primary" href="#checkout">{directoryCta} <ArrowRight size={17} /></a><Link className="text-button" href="/">More about FayFay</Link></div>
           </div>
         </div></section>
 

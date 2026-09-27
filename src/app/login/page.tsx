@@ -12,7 +12,11 @@ interface FormData {
   password: string
 }
 
-const debugLogin = (message: string, data?: any) => {
+// Only same-site paths: an absolute or protocol-relative URL here would be an open redirect.
+const safeRedirectPath = (value: string | null) =>
+  value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') ? value : null
+
+const debugLogin = (message: string, data?: unknown) => {
   if (process.env.NODE_ENV === 'development') {
     console.log(`🔑 Login Debug: ${message}`, data || '');
   }
@@ -42,13 +46,13 @@ export default function LoginPage() {
 
       // Get redirect URL from query params or use default based on role
       const searchParams = new URLSearchParams(window.location.search)
-      const redirectTo = searchParams.get('redirectedFrom') || getDefaultRedirect(user?.user_metadata?.role)
-      
+      const redirectTo = safeRedirectPath(searchParams.get('redirectedFrom')) || getDefaultRedirect(user?.user_metadata?.role)
+
       toast.success('Login successful')
       debugLogin('Redirecting to', { redirectTo })
-      
+
       // Force a hard navigation instead of client-side routing
-      window.location.href = redirectTo
+      window.location.assign(redirectTo)
     } catch (err) {
       debugLogin('Login error', err)
       console.error('Login error:', err)

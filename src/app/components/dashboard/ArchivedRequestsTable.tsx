@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 interface ArchivedRequest {
   id: string;
@@ -16,7 +16,7 @@ interface ArchivedRequest {
 
 export function ArchivedRequestsTable() {
   const [archivedRequests, setArchivedRequests] = useState<ArchivedRequest[]>([]);
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
   
   useEffect(() => {
     const fetchArchived = async () => {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useUsers } from '@/app/hooks/useUsers'
 import { useToast } from '@/app/hooks/useToast'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import LoadingSpinner from '@/app/components/common/LoadingSpinner'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -56,13 +56,38 @@ export function SocialMediaLinks() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch social links on component mount
+  const fetchSocialLinks = async () => {
+    if (!user?.id) return
+
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('social_media_links')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      setLinks(data || [])
+    } catch (err) {
+      const error = err as Error
+      toast({ 
+        message: error.message || 'Error fetching social links', 
+        type: 'error' 
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!user?.id) return
     
     fetchSocialLinks()
     
     // Set up real-time subscription
-    const supabase = createClientComponentClient()
+    const supabase = createSupabaseBrowserClient()
     const channel = supabase
       .channel('social_media_links')
       .on(
@@ -99,38 +124,13 @@ export function SocialMediaLinks() {
     }
   }, [user?.id])
 
-  const fetchSocialLinks = async () => {
-    if (!user?.id) return
-
-    try {
-      const supabase = createClientComponentClient()
-      const { data, error } = await supabase
-        .from('social_media_links')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-
-      setLinks(data || [])
-    } catch (err) {
-      const error = err as Error
-      toast({ 
-        message: error.message || 'Error fetching social links', 
-        type: 'error' 
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user?.id) return
     
     setIsSubmitting(true)
     try {
-      const supabase = createClientComponentClient()
+      const supabase = createSupabaseBrowserClient()
       const { data, error } = await supabase
         .from('social_media_links')
         .insert({
@@ -172,7 +172,7 @@ export function SocialMediaLinks() {
     setLinks(links.filter(link => link.id !== id))
     
     try {
-      const supabase = createClientComponentClient()
+      const supabase = createSupabaseBrowserClient()
       const { error } = await supabase
         .from('social_media_links')
         .delete()
@@ -205,7 +205,7 @@ export function SocialMediaLinks() {
     ))
     
     try {
-      const supabase = createClientComponentClient()
+      const supabase = createSupabaseBrowserClient()
       const { error } = await supabase
         .from('social_media_links')
         .update({ is_visible })

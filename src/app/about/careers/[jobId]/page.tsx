@@ -6,7 +6,8 @@ export const metadata: Metadata = {
   description: 'Join our team at Fayfort Enterprise and help shape the future of B2B commerce.',
 }
 
-export default function ApplicationPage({ params }: { params: { jobId: string } }) {
+export default async function ApplicationPage(props: { params: Promise<{ jobId: string }> }) {
+  const params = await props.params
   // In a real app, we would fetch the job details based on the jobId
   const jobTitle = "Senior Software Engineer" // This would come from your data
 

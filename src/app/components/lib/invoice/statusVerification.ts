@@ -1,8 +1,8 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { InvoiceStatus } from '@/app/components/types/invoice'
 
 export class InvoiceVerificationService {
-  private supabase = createClientComponentClient()
+  private supabase = createSupabaseBrowserClient()
 
   async checkInvoiceStatus(requestId: string): Promise<InvoiceStatus> {
     const { data, error } = await this.supabase

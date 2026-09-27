@@ -1,18 +1,14 @@
 import { stripe } from '@/app/components/lib/stripe/server'
-import { headers } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 // New way to configure API routes in App Router
-export const runtime = 'edge'; // optional
 export const dynamic = 'force-dynamic';
-export const preferredRegion = 'iad1';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
-    const signature = headers().get('stripe-signature')
+    const signature = request.headers.get('stripe-signature')
 
     if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
       return NextResponse.json(
@@ -27,7 +23,7 @@ export async function POST(request: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET
     )
 
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createSupabaseServerClient()
 
     switch (event.type) {
       case 'payment_intent.succeeded': {

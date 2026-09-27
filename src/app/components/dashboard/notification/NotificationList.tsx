@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { NotificationItem } from '@/app/components/dashboard/notification/NotificationItem'
 import { NotificationSkeleton } from '@/app/components/dashboard/notification/NotificationSkeleton'
 import { DashboardNotification } from '@/app/components/types/notifications'
@@ -16,13 +16,9 @@ interface NotificationListProps {
 export function NotificationList({ filter, type }: NotificationListProps) {
   const [notifications, setNotifications] = useState<DashboardNotification[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
   const router = useRouter()
-
-  useEffect(() => {
-    fetchNotifications()
-  }, [filter, type])
 
   async function fetchNotifications() {
     try {
@@ -59,6 +55,10 @@ export function NotificationList({ filter, type }: NotificationListProps) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [filter, type])
 
   const handleMarkAsRead = (id: string) => {
     setNotifications(prev =>

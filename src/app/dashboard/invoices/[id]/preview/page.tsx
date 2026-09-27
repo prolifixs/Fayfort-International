@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { PDFPreview } from '@/app/components/common/invoice/PDFPreview'
 import { Invoice } from '@/app/components/types/invoice'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-export default function InvoicePreviewPage({ params }: { params: { id: string } }) {
+export default function InvoicePreviewPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params)
   console.log('🟢 PreviewPage: Component mounted with params:', params)
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)

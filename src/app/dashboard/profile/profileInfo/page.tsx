@@ -2,7 +2,7 @@
 
 import { ProfileInfo } from '@/app/components/dashboard/profile/ProfileInfo'
 import { useUsers } from '@/app/hooks/useUsers'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { Database } from '@/app/components/types/database.types'
 import { useEffect, useState } from 'react'
 
@@ -13,7 +13,7 @@ type UserWithAddresses = Database['public']['Tables']['users']['Row'] & {
 export default function ProfileInfoPage() {
   const { users, loading } = useUsers()
   const [userWithAddresses, setUserWithAddresses] = useState<UserWithAddresses | null>(null)
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createSupabaseBrowserClient()
   
   useEffect(() => {
     async function fetchUserWithAddresses() {

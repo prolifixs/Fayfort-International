@@ -9,7 +9,7 @@ export default async function RequestLayout({
 }: {
   children: React.ReactNode
 }) {
-  const headersList = headers();
+  const headersList = await headers();
   const token = headersList.get('authorization');
   
   if (token) {

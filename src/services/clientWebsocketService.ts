@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -17,7 +17,7 @@ interface WebsocketConfig {
 }
 
 class ClientWebsocketService {
-  private supabase = createClientComponentClient()
+  private supabase = createSupabaseBrowserClient()
   private channels: Map<string, RealtimeChannel> = new Map()
   private connectionStatus: ConnectionStatus = 'disconnected'
   private statusListeners: Set<(status: ConnectionStatus) => void> = new Set()

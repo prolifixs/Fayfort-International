@@ -1,7 +1,7 @@
 import { RequestStatus } from '@/app/components/types/request.types'
 import { InvoiceStatus } from '@/app/components/types/invoice'
 import { notificationService, NotificationType } from './notificationService';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { InvoiceService } from '@/app/components/lib/invoice/invoiceService';
 import { ShippingService } from './shippingService';
 
@@ -70,7 +70,7 @@ export const STATUS_MAPPINGS: Record<RequestStatus, StatusMapping> = {
 
 export class StatusService {
   private readonly STORAGE_KEY = 'request_statuses';
-  private supabase = createClientComponentClient();
+  private supabase = createSupabaseBrowserClient();
   private invoiceService = new InvoiceService();
   private notificationService = notificationService;
   private shippingService = new ShippingService();

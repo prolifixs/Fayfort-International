@@ -2,12 +2,12 @@
 
 import ProtectedRoute from '@/app/components/common/ProtectedRoute';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import Pagination from '@/app/components/admin/Pagination';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import type { Database, TableRow } from '@/app/components/types/database.types';
+import type { TableRow } from '@/app/components/types/database.types';
 import { ProductCard } from '@/app/components/common/ProductCard/ProductCard';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
@@ -31,35 +31,11 @@ export default function CatalogPage() {
   const productsPerPage = 10;
   const [categories, setCategories] = useState<Category[]>([]);
 
-  const supabase = createClientComponentClient<Database>();
+  const supabase = createSupabaseBrowserClient();
   const router = useRouter();
 
   // Real-time subscription setup
-  useEffect(() => {
-    const channel = supabase
-      .channel('product_updates')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'products' 
-        }, 
-        (payload) => {
-          fetchProducts();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
-
   // Initial fetch
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
   // Add this after the existing useEffect for products
   useEffect(() => {
     const fetchCategories = async () => {
@@ -85,7 +61,7 @@ export default function CatalogPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      let query = supabase
+      const query = supabase
         .from('products')
         .select(`
           *,
@@ -113,6 +89,30 @@ export default function CatalogPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('product_updates')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'products' 
+        }, 
+        (payload) => {
+          fetchProducts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   // Filter products
   const filteredProducts = products.filter(product => {

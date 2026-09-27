@@ -1,8 +1,8 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
 export class AuthService {
-  private supabase = createClientComponentClient();
+  private supabase = createSupabaseBrowserClient();
   private currentSession: Session | null = null;
 
   async initialize() {

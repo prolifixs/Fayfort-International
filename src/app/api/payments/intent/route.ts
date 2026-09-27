@@ -3,7 +3,6 @@ import { stripe } from '@/app/components/lib/stripe/server'
 
 // Add route configurations
 export const dynamic = 'force-dynamic'
-export const runtime = 'edge'
 
 interface PaymentIntentRequest {
   amount: number;

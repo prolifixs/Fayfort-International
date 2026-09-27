@@ -13,7 +13,7 @@ import {
   CheckCircle,
   Loader2
 } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/useToast'
 
 export function FinanceRequestsTable() {
@@ -22,7 +22,7 @@ export function FinanceRequestsTable() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isOnWaitlist, setIsOnWaitlist] = useState(false)
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
 
   const features = [
@@ -54,10 +54,6 @@ export function FinanceRequestsTable() {
   ]
 
   // Check waitlist status on mount
-  useEffect(() => {
-    checkWaitlistStatus()
-  }, [])
-
   const checkWaitlistStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -79,6 +75,10 @@ export function FinanceRequestsTable() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    checkWaitlistStatus()
+  }, [])
 
   const handleWaitlist = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -140,8 +140,8 @@ export function FinanceRequestsTable() {
     }
   }
 
-  // Waitlist Status Card
-  const WaitlistStatus = () => {
+  // Waitlist Status Card (a render function, not a component, so the email input keeps focus while typing)
+  const renderWaitlistStatus = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center p-4">
@@ -155,10 +155,10 @@ export function FinanceRequestsTable() {
         <div className="bg-green-50 p-6 rounded-xl border border-green-200 text-center">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-green-800 mb-2">
-            You're on the Waitlist!
+            You&apos;re on the Waitlist!
           </h3>
           <p className="text-green-700">
-            We'll notify you when Finance features launch
+            We&apos;ll notify you when Finance features launch
           </p>
         </div>
       )
@@ -236,7 +236,7 @@ export function FinanceRequestsTable() {
       {/* Waitlist Form/Status */}
       <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200">
         <h2 className="text-2xl font-semibold mb-6 text-center">Join the Waitlist</h2>
-        <WaitlistStatus />
+        {renderWaitlistStatus()}
       </div>
     </div>
   )

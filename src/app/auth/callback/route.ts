@@ -1,5 +1,4 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { NextResponse, NextRequest } from 'next/server';
 import { EmailService } from '@/services/emailService';
 
@@ -15,7 +14,7 @@ export async function GET(request: NextRequest) {
       throw new Error('No code provided');
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createSupabaseServerClient();
     
     const { error: authError } = await supabase.auth.exchangeCodeForSession(code);
     if (authError) throw authError;

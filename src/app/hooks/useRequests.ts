@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { RequestWithRelations, RequestFormData } from '../components/types/request.types'
 import { SupabaseRequestResponse, isSupabaseRequestResponse } from '../components/types/database.types'
 
@@ -11,13 +11,19 @@ interface UseRequestsOptions {
   endDate?: string
 }
 
+const CACHE_TTL_MS = 5 * 60 * 1000
+
+// Clock reads live outside the hook body, which must stay pure.
+const cacheTimestamp = () => Date.now()
+const isCacheFresh = (timestamp: number) => Date.now() - timestamp < CACHE_TTL_MS
+
 export function useRequests(options: UseRequestsOptions = {}) {
   const [requests, setRequests] = useState<RequestWithRelations[]>([])
   const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
 
   // Memoize options to prevent infinite loops
   const memoizedOptions = useMemo(() => ({
@@ -32,7 +38,7 @@ export function useRequests(options: UseRequestsOptions = {}) {
 
     if (cachedData) {
       const { data, timestamp } = JSON.parse(cachedData);
-      const isCacheValid = Date.now() - timestamp < 5 * 60 * 1000; // 5 minutes
+      const isCacheValid = isCacheFresh(timestamp);
       
       if (isCacheValid) {
         setRequests(data);
@@ -120,7 +126,7 @@ export function useRequests(options: UseRequestsOptions = {}) {
       // Cache the results
       sessionStorage.setItem(cacheKey, JSON.stringify({
         data: transformedData,
-        timestamp: Date.now()
+        timestamp: cacheTimestamp()
       }));
 
     } catch (err) {

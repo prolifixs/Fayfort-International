@@ -166,13 +166,6 @@ export function MediaUploader({ productId, initialMedia = [], onMediaChange }: M
   const [activeId, setActiveId] = useState<string | null>(null)
   
   useEffect(() => {
-    if (!productId) {
-      console.error('❌ MediaUploader: No productId provided')
-      showError('Product ID is required')
-    }
-  }, [productId])
-
-  useEffect(() => {
     console.log('Media State:', {
       mediaItems: media.map(item => ({
         id: item.id,
@@ -186,6 +179,13 @@ export function MediaUploader({ productId, initialMedia = [], onMediaChange }: M
     setError(message)
     setTimeout(() => setError(null), 3000)
   }
+
+  useEffect(() => {
+    if (!productId) {
+      console.error('❌ MediaUploader: No productId provided')
+      showError('Product ID is required')
+    }
+  }, [productId])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

@@ -29,7 +29,7 @@ export function WelcomeModal({ isOpen, onClose, onTakeTour }: WelcomeModalProps)
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <h4 className="font-medium">Here's what you can do:</h4>
+            <h4 className="font-medium">Here&apos;s what you can do:</h4>
             <ul className="space-y-2 list-disc pl-4">
               <li>Browse our extensive catalog of tech products</li>
               <li>Make requests for specific items</li>

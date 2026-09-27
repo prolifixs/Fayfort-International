@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { clientWebsocketService, ConnectionStatus } from '@/services/clientWebsocketService'
 import { useToast } from '@/hooks/useToast'
 import { Loader2, ChevronDown, ChevronUp, ChevronLeft, PlusCircle } from 'lucide-react'
@@ -80,7 +80,7 @@ function EmptyStateCard({ onCreateRequest }: EmptyStateCardProps) {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-gray-900">Create Your First Request</h3>
           <p className="text-sm text-gray-500">
-            Start by creating a request for the products you're interested in. Our team will help you find the best deals.
+            Start by creating a request for the products you&apos;re interested in. Our team will help you find the best deals.
           </p>
         </div>
 
@@ -193,7 +193,7 @@ export function UserRequestsTable() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
   const [currentPage, setCurrentPage] = useState(1)
   const [sort, setSort] = useState<SortConfig>({ field: 'created_at', direction: 'desc' })
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const { toast } = useToast()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null)
@@ -802,7 +802,7 @@ export function RequestDetails({ requestId }: { requestId: string }) {
   const router = useRouter()
   const [details, setDetails] = useState<UserRequest | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
 
   useEffect(() => {
@@ -1059,7 +1059,7 @@ function ShippedDeleteConfirmationModal({
   requestId: string;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
 
   const handleShippedRequestDeletion = async (requestId: string) => {
     try {

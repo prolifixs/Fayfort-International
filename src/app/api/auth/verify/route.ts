@@ -1,9 +1,7 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { NextResponse, NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic'
-export const runtime = 'edge' // Optional: if you want to use edge runtime
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +13,7 @@ export async function GET(request: NextRequest) {
       throw new Error('Invalid verification link');
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createSupabaseServerClient();
 
     // Verify the token with Supabase
     const { error: verifyError } = await supabase.auth.verifyOtp({
