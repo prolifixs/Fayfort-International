@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { LoadingProvider } from '@/contexts/LoadingContext'
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </Suspense>
         </ErrorBoundary>
         <Toaster />
+        <Analytics />
       </body>
     </html>
   )
