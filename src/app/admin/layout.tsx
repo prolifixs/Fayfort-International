@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import ProtectedRoute from '@/app/components/common/ProtectedRoute'
 import { supabaseAdmin } from '@/app/components/lib/supabase'
+import { roleOf } from '@/lib/auth/role';
 
 export async function generateMetadata() {
   const headersList = await headers()
@@ -8,7 +9,7 @@ export async function generateMetadata() {
   
   if (token) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token)
-    if (user?.user_metadata?.role !== 'admin') {
+    if (roleOf(user) !== 'admin') {
       return {
         title: 'Unauthorized'
       }

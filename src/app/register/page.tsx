@@ -16,7 +16,6 @@ interface RegisterFormData {
   name: string
   email: string
   password: string
-  role: 'customer' | 'supplier'
 }
 
 const registerSchema = z.object({
@@ -28,7 +27,6 @@ const registerSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  role: z.enum(['customer', 'supplier']),
 });
 
 export default function RegisterPage() {
@@ -38,7 +36,6 @@ export default function RegisterPage() {
     name: '',
     email: '',
     password: '',
-    role: 'customer'
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -103,9 +100,10 @@ export default function RegisterPage() {
         password: validatedData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/verify-email`,
+          // Everyone who signs up here is a customer. Roles live in app_metadata, which only
+          // FAYFORT can set, never in this user-editable metadata.
           data: {
             name: validatedData.name,
-            role: validatedData.role
           }
         }
       });
@@ -151,15 +149,9 @@ export default function RegisterPage() {
 
     try {
       if (provider === 'google') {
-        await signInWithGoogle({ 
-          role: formData.role,
-          isRegistration: true 
-        })
+        await signInWithGoogle({ isRegistration: true })
       } else {
-        await signInWithFacebook({ 
-          role: formData.role,
-          isRegistration: true 
-        })
+        await signInWithFacebook({ isRegistration: true })
       }
       toast.success(`Redirecting to ${provider} login...`)
     } catch (err) {
@@ -283,22 +275,6 @@ export default function RegisterPage() {
                   </ul>
                 </div>
               )}
-            </div>
-
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                I want to
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value as 'customer' | 'supplier' })}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-              >
-                <option value="customer">Buy Products</option>
-                <option value="supplier">Sell Products</option>
-              </select>
             </div>
 
             <div>

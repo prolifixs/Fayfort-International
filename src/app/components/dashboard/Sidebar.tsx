@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, FileText, Bell, Settings, User } from 'lucide-react'
+import { Home, FileText, Bell } from 'lucide-react'
 
 type DashboardView = 'dashboard' | 'requests' | 'notifications' | 'profile' | 'settings'
 
@@ -8,8 +8,7 @@ const navigation = [
   { name: 'Dashboard', view: 'dashboard', icon: Home },
   { name: 'Requests', view: 'requests', icon: FileText },
   { name: 'Notifications', view: 'notifications', icon: Bell },
-  { name: 'Profile', view: 'profile', icon: User },
-  { name: 'Settings', view: 'settings', icon: Settings },
+  // Profile and Settings stay closed with the rest of the enterprise app (see src/proxy.ts).
 ] as const
 
 interface SidebarProps {

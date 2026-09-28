@@ -43,6 +43,80 @@ These are unreachable while the enterprise app is closed, and come back the mome
 7. Middleware logs user IDs and roles on every request and echoes them in response headers nobody reads.
 8. Personal data in Supabase (profiles, addresses) has no defined retention period or deletion path.
 
+## Update, 28 September 2026: reopening the enquiry path only
+
+`ENABLE_ENTERPRISE=true` no longer reopens the whole enterprise app. It opens only what a customer
+needs to send an enquiry, and FAYFORT answers enquiries in Fayfort Ops instead of the admin pages
+here (`src/proxy.ts`):
+
+| Opens | Needs sign-in |
+|---|---|
+| `/login`, `/register`, `/check-email`, `/verify-email`, `/forgot-password`, `/reset-password`, `/unauthorized`, `/auth/callback`, `/api/auth/verify` | No |
+| `/catalog`, `/catalog/*`, `/dashboard`, `/dashboard/requests`, `/dashboard/requests/*`, `/dashboard/notifications` | Yes |
+
+Everything else stays 404 whatever the switch says: `/admin`, `/request`, invoices, profile,
+settings, `/debug`, `/about`, and every other `/api` route (so items 1, 5 and 6 above stay out of
+reach). Verified on a production build, both with the switch on and off.
+
+Status of the list above for the enquiry path:
+
+| Item | Status |
+|---|---|
+| 1. `/api/users` | Closed. Role changes it makes now go to `app_metadata`. |
+| 2. Roles in `user_metadata` | **Fixed.** Every role check reads `app_metadata` through `roleOf()` (`src/lib/auth/role.ts`); a user without one is a customer. Sign-up no longer stores a role. |
+| 3. `getSession()` in middleware | **Fixed** (in the Next 16 upgrade). `ProtectedRoute` now uses `getUser()` too. |
+| 4. Paths containing `.` | **Fixed.** The proxy only lets through build output, `/public` folders and top-level files; the matcher no longer skips paths by image extension, which let `/api/products/media/x.png` reach a route without the gate. |
+| 5. Routes without authorization | Closed, except `/api/auth/verify`, which acts only on the caller's own verification token. |
+| 6. Registration rate limit | Sign-up goes straight to Supabase Auth (`/api/auth/register` is unused and closed), so Supabase's Auth rate limits apply. Check them under Authentication > Rate Limits. |
+| 7. Logging IDs and roles | **Fixed.** No per-request logging, no `x-user-*` headers. `ProtectedRoute` no longer prints the session (access and refresh tokens) to the browser console. |
+| 8. Retention | Open. |
+
+New findings, fixed:
+
+- `/auth/callback` saved the `role` query parameter into `public.users`, so a sign-in link ending
+  in `&role=admin` recorded an admin. It now only creates a missing profile, as a customer.
+- Registration offered a "Sell Products" (supplier) role to anyone. It is customer-only now.
+- `services/authService.ts` (unused) trusted a role kept in `localStorage`. Removed.
+
+**New database, 28 September 2026.** Nobody could sign in to the old Supabase project
+(`uxbakpeeqydatgvvdyaa`), so the site now uses a new one, `uswsmbhkedbehkotxngm`, built from
+`supabase/schema.sql` (the old schema was never checked in; this one is rebuilt from what the code
+reads and writes). Row-level security is part of it from the start:
+
+- Customers see and send only their own requests (always as pending, never with tracking or
+  resolution fields), see their own history, invoices and notifications, mark notifications read,
+  join the finance waitlist as themselves, and browse the catalog. They can withdraw a request only
+  while it is pending; a request with an invoice can't be deleted at all.
+- Signed-out visitors get nothing; product images are public files in the `products` bucket.
+- Every new profile is a customer, whatever the sign-up form sends, and confirming the email makes
+  it active. Customers can't change their role or status, or call any database function.
+- Every status a request passes through is recorded in `status_history` by the database.
+- Fayfort Ops uses the secret key, which these rules don't limit.
+
+Applied, then checked on the live project with 49 cases in a rolled-back transaction (another
+customer's data, approving, setting a role, deleting invoices, writing history, signed-out access and
+database functions are all refused): all pass, and nothing was left behind. With these rules the
+approve/reject buttons left in the customer dashboard, and deleting shipped requests, are refused:
+approving, rejecting and archiving are FAYFORT's to do.
+
+**Still required before switching it on:**
+
+1. **Point the deployment at the new project.** In Vercel, set `NEXT_PUBLIC_SUPABASE_URL` to
+   `https://uswsmbhkedbehkotxngm.supabase.co` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to its publishable
+   key. In Supabase, under Authentication > URL Configuration, set the Site URL to
+   `https://www.fayfort.com` and allow `https://www.fayfort.com/**` as a redirect URL; set up Google
+   or Facebook sign-in there again if they are wanted.
+2. **Add the catalog.** The new project has no products, so there is nothing to request until
+   FAYFORT adds some (Table Editor, or Fayfort Ops).
+3. **Grant admins in `app_metadata`** if anyone needs an admin role in the site; nobody has one
+   (see `src/lib/auth/role.ts`).
+
+**The old project** still holds whatever customers entered before, and possibly a service-role key
+that was public: from 9 January to 7 February 2025 (commits `0bd1df0` to `2f1eb76`) the code read
+`NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`, and any build in that window with the variable set put it
+in the site's JavaScript. The owner of `uxbakpeeqydatgvvdyaa` (most likely the account behind
+prolifixs.pj@gmail.com) should export anything worth keeping and delete that project.
+
 ## Deferred (reason · review by 24 October 2026)
 
 | Item | Reachability | Reason |

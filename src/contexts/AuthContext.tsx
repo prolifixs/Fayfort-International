@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { WeakPassword } from '@supabase/supabase-js';
 import { supabase, getRedirectUrl } from '@/app/components/lib/supabase';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { roleOf } from '@/lib/auth/role';
 import { toast } from 'react-hot-toast';
 import { supabaseAdmin } from '@/app/components/lib/supabase';
 
@@ -19,11 +20,11 @@ interface AuthContextType {
     session: Session;
     weakPassword?: WeakPassword;
   }>;
-  signUp: (email: string, password: string, role: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  signInWithGoogle: (options?: { role?: string, isRegistration?: boolean }) => Promise<void>;
-  signInWithFacebook: (options?: { role?: string, isRegistration?: boolean }) => Promise<void>;
+  signInWithGoogle: (options?: { isRegistration?: boolean }) => Promise<void>;
+  signInWithFacebook: (options?: { isRegistration?: boolean }) => Promise<void>;
   isEmailVerified: boolean;
   resendVerificationEmail: (email: string) => Promise<void>;
   verifyEmail: (token: string, email: string) => Promise<void>;
@@ -65,15 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data;
   };
 
-  const signUp = async (email: string, password: string, role: string, name: string) => {
+  // No role here: user metadata is editable by the user. Roles live in app_metadata (lib/auth/role).
+  const signUp = async (email: string, password: string, name: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { 
-          role,
-          name
-        },
+        data: { name },
         emailRedirectTo: getRedirectUrl()
       }
     });
@@ -104,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUserRole: async (userId: string, role: string) => {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(
         userId,
-        { user_metadata: { role } }
+        { app_metadata: { role } }
       );
       if (error) throw error;
     },
@@ -140,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           debugAuth('Session exists, user set', { 
             user: session.user,
-            role: session.user.user_metadata?.role,
+            role: roleOf(session.user),
             isNewUser: !hasVisited
           });
         }
@@ -183,13 +182,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
       },
-      signInWithGoogle: async (options?: { role?: string, isRegistration?: boolean }) => {
+      signInWithGoogle: async (options?: { isRegistration?: boolean }) => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo: `${window.location.origin}/auth/callback`,
             queryParams: {
-              ...(options?.role && { role: options.role }),
               ...(options?.isRegistration && { registration: 'true' }),
               isNewUser: 'true'
             }
@@ -197,13 +195,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (error) throw error;
       },
-      signInWithFacebook: async (options?: { role?: string, isRegistration?: boolean }) => {
+      signInWithFacebook: async (options?: { isRegistration?: boolean }) => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'facebook',
           options: {
             redirectTo: `${window.location.origin}/auth/callback`,
             queryParams: {
-              ...(options?.role && { role: options.role }),
               ...(options?.isRegistration && { registration: 'true' }),
               isNewUser: 'true'
             }

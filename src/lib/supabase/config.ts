@@ -1,7 +1,7 @@
 import type { CookieOptionsWithName } from '@supabase/ssr'
 
 // Fallbacks keep builds and the public site working without credentials; auth needs the real values.
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uxbakpeeqydatgvvdyaa.supabase.co'
+export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uswsmbhkedbehkotxngm.supabase.co'
 export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-anon-key-for-local-dev'
 
 // The clients are untyped. The hand-written Database type in app/components/types/database.types.ts

@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
   try {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
-    const role = requestUrl.searchParams.get('role') || 'customer';
 
     if (!code) {
       throw new Error('No code provided');
@@ -30,16 +29,20 @@ export async function GET(request: NextRequest) {
     }
 
     if (user) {
+      // Creates the profile of someone signing in for the first time, as a customer. An existing
+      // profile is left alone: a role never comes from the sign-in link (it used to take ?role=
+      // from the URL, so anyone could ask for admin), and is granted only in app_metadata.
       const { error: profileError } = await supabase
         .from('users')
         .upsert({
           id: user.id,
           email: user.email,
           name: user.user_metadata?.name || user.email?.split('@')[0],
-          role: role,
+          role: 'customer',
           status: 'pending'
         }, {
-          onConflict: 'id'
+          onConflict: 'id',
+          ignoreDuplicates: true
         });
 
       if (profileError) {

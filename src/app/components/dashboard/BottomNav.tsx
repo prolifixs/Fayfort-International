@@ -1,12 +1,6 @@
 'use client';
 
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Bell, 
-  User, 
-  Settings 
-} from 'lucide-react';
+import { LayoutDashboard, FileText, Bell } from 'lucide-react';
 import Link from 'next/link';
 
 type DashboardView = 'dashboard' | 'requests' | 'notifications' | 'profile' | 'settings';
@@ -21,8 +15,7 @@ export function BottomNav({ currentView, onNavigate }: BottomNavProps) {
     { view: 'dashboard' as DashboardView, icon: LayoutDashboard, label: 'Home' },
     { view: 'requests' as DashboardView, icon: FileText, label: 'Requests' },
     { view: 'notifications' as DashboardView, icon: Bell, label: 'Alerts' },
-    { view: 'profile' as DashboardView, icon: User, label: 'Profile' },
-    { view: 'settings' as DashboardView, icon: Settings, label: 'Settings' }
+    // Profile and Settings stay closed with the rest of the enterprise app (see src/proxy.ts).
   ];
 
   return (

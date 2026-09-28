@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { supabaseAdmin } from "../components/lib/supabase";
 
 import { redirect } from "next/navigation";
+import { roleOf } from '@/lib/auth/role';
 
 export default async function RequestLayout({
   children,
@@ -14,7 +15,7 @@ export default async function RequestLayout({
   
   if (token) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-    if (!['admin', 'supplier'].includes(user?.user_metadata?.role)) {
+    if (!['admin', 'supplier'].includes(roleOf(user))) {
       redirect('/unauthorized');
     }
   }

@@ -9,12 +9,13 @@ import { useLoading } from '@/contexts/LoadingContext';
 import LoadingSpinner from './LoadingSpinner';
 import { useEffect } from 'react';
 import { useLoadingSafety } from '@/app/hooks/useLoadingSafety';
+import { roleOf } from '@/lib/auth/role';
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const { startLoading, endLoading } = useLoading();
   const isStuck = useLoadingSafety(5000, isLoading);
-  const userRole = user?.user_metadata?.role;
+  const userRole = user ? roleOf(user) : undefined;
 
   useEffect(() => {
     if (isLoading) {

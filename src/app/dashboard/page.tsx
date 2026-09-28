@@ -12,7 +12,7 @@ import { NewArrivals } from '@/app/components/catalog/NewArrivals'
 import { useRouter } from 'next/navigation'
 import { FayfayAIPreview } from '../components/dashboard/FayfayAIPreview'
 import { RequestTabs } from '../components/admin/RequestTabs'
-import { Bell, FileText, Bookmark } from 'lucide-react'
+import { Bell, Bookmark } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { WelcomeModal } from '../components/onboarding/WelcomeModal'
 
@@ -184,13 +184,7 @@ export default function DashboardPage() {
                 New Request
               </button>
               <div className="flex items-center space-x-2">
-                <button
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full"
-                  onClick={() => router.push('/dashboard/invoices')}
-                  title="Invoices"
-                >
-                  <FileText className="h-5 w-5" />
-                </button>
+                {/* Invoices stay closed with the rest of the enterprise app (see src/proxy.ts). */}
                 <button
                   className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full"
                   onClick={() => {/* Bookmark functionality */}}

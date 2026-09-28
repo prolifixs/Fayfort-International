@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
 
     if (verifyError) throw verifyError;
 
-    // Get the user and update their status
+    // The email is verified at this point. Marking the profile active is up to the database
+    // (see docs/SECURITY-REVIEW.md, database rules), because a user may not change their own
+    // status; a refusal here must not turn a good verification into an error.
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { error: updateError } = await supabase
@@ -31,18 +33,14 @@ export async function GET(request: NextRequest) {
         .update({ status: 'active' })
         .eq('id', user.id);
 
-      if (updateError) throw updateError;
+      if (updateError) console.warn('Verify: profile status left to the database:', updateError.code);
     }
 
     // Redirect to login page with success message
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/login?verified=true`
-    );
+    return NextResponse.redirect(new URL('/login?verified=true', request.url));
 
   } catch (error) {
     console.error('Verification error:', error);
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/login?error=verification_failed`
-    );
+    return NextResponse.redirect(new URL('/login?error=verification_failed', request.url));
   }
 } 

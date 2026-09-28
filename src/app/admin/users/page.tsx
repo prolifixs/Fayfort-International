@@ -161,7 +161,7 @@ export default function UsersManagement() {
       // Update in auth.users metadata
       const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
         userId,
-        { user_metadata: { role: newRole } }
+        { app_metadata: { role: newRole } }
       )
 
       if (authError) throw authError

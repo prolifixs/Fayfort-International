@@ -112,7 +112,7 @@ export async function PATCH(request: Request) {
     if (validatedData.role) {
       const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
         validatedData.id,
-        { user_metadata: { role: validatedData.role } }
+        { app_metadata: { role: validatedData.role } }
       )
       
       if (authError) throw authError

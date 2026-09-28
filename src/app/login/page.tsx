@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import LoadingSpinner from '../components/common/LoadingSpinner'
 import { toast } from 'react-hot-toast'
+import { roleOf } from '@/lib/auth/role';
 
 interface FormData {
   email: string
@@ -46,7 +47,7 @@ export default function LoginPage() {
 
       // Get redirect URL from query params or use default based on role
       const searchParams = new URLSearchParams(window.location.search)
-      const redirectTo = safeRedirectPath(searchParams.get('redirectedFrom')) || getDefaultRedirect(user?.user_metadata?.role)
+      const redirectTo = safeRedirectPath(searchParams.get('redirectedFrom')) || getDefaultRedirect(roleOf(user))
 
       toast.success('Login successful')
       debugLogin('Redirecting to', { redirectTo })

@@ -1,4 +1,7 @@
-const SUPABASE_HOST = 'uxbakpeeqydatgvvdyaa.supabase.co'
+// The Supabase project the site talks to (supabase/schema.sql). Its host is allowed below, so it
+// follows NEXT_PUBLIC_SUPABASE_URL; the fallback is the project set up on 28 September 2026.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uswsmbhkedbehkotxngm.supabase.co'
+const SUPABASE_HOST = new URL(SUPABASE_URL).host
 const SHOPIFY_STORE = 'https://8kjjz9-ei.myshopify.com'
 
 // Allowlist of what the pages load. Next.js injects inline bootstrap scripts, so

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { roleOf } from '@/lib/auth/role';
 
 
 interface RoleBasedNavItemProps {
@@ -15,9 +16,8 @@ export default function RoleBasedNavItem({ href, allowedRoles, children }: RoleB
 
   useEffect(() => {
     const checkRole = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userRole = session?.user?.user_metadata?.role;
-      setIsAllowed(allowedRoles.includes(userRole));
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAllowed(Boolean(user) && allowedRoles.includes(roleOf(user)));
     };
     checkRole();
   }, [allowedRoles]);
