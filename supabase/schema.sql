@@ -149,11 +149,54 @@ create table if not exists public.finance_waitlist (
   created_at timestamptz not null default now()
 );
 
+-- Video consultations with FayFay: paid in the Shopify store (the Consultation product), then
+-- scheduled, tracked and completed here. Customers don't sign in to book, so no browser role
+-- reaches these tables: fayfort.com's booking pages (after checking the order number and email)
+-- and Fayfort Ops both work on the server with the secret key. Every change goes through the
+-- booking_* functions further down, which allow only the next step and record it.
+--   paid -> proposed (customer suggests times) -> scheduled (FAYFORT confirms one) -> completed
+--   paid, proposed or scheduled -> cancelled
+create table if not exists public.bookings (
+  id uuid primary key default gen_random_uuid(),
+  shopify_order_id text not null unique,
+  order_name text not null,
+  customer_email text not null,
+  customer_name text,
+  hours integer not null check (hours between 1 and 24),
+  amount numeric(12, 2) not null check (amount >= 0),
+  currency text not null default 'USD',
+  status text not null default 'paid' check (status in ('paid', 'proposed', 'scheduled', 'completed', 'cancelled')),
+  customer_timezone text,
+  proposed_times timestamptz[] not null default '{}',
+  customer_notes text,
+  scheduled_start timestamptz,
+  meeting_url text,
+  paid_at timestamptz not null default now(),
+  completed_at timestamptz,
+  cancelled_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint bookings_scheduled_has_time check (status not in ('scheduled', 'completed') or scheduled_start is not null)
+);
+create index if not exists bookings_status_idx on public.bookings (status, paid_at desc);
+create index if not exists bookings_order_name_idx on public.bookings (order_name);
+
+-- What happened to each booking and who did it: the tracking timeline both sides show.
+create table if not exists public.booking_events (
+  id bigint generated always as identity primary key,
+  booking_id uuid not null references public.bookings (id) on delete cascade,
+  status text not null,
+  actor text not null check (actor in ('customer', 'staff', 'system')),
+  note text,
+  created_at timestamptz not null default now()
+);
+create index if not exists booking_events_booking_idx on public.booking_events (booking_id, created_at);
+
 do $$
 declare
   t text;
 begin
-  foreach t in array array['users', 'products', 'requests', 'invoices', 'notifications'] loop
+  foreach t in array array['users', 'products', 'requests', 'invoices', 'notifications', 'bookings'] loop
     execute format('drop trigger if exists %1$s_updated_at on public.%1$I', t);
     execute format('create trigger %1$s_updated_at before update on public.%1$I
                     for each row execute function public.set_updated_at()', t);
@@ -241,6 +284,156 @@ drop trigger if exists record_request_status on public.requests;
 create trigger record_request_status
   after insert or update of status on public.requests
   for each row execute function public.record_request_status();
+
+-- Booking steps. Each locks the booking, refuses a step that doesn't follow from its status, and
+-- records the step in booking_events, all in one go. Times are timestamptz (UTC); FAYFORT works in
+-- China time, so staff-facing notes are written in Asia/Shanghai.
+create or replace function public.booking_china_time(t timestamptz)
+returns text language sql immutable set search_path = '' as $$
+  select to_char(t at time zone 'Asia/Shanghai', 'Dy DD Mon YYYY, HH24:MI') || ' China time'
+$$;
+
+-- A paid consultation order becomes a booking. Called by whichever side sees the order first;
+-- calling it again for the same order returns the existing booking unchanged.
+create or replace function public.booking_record_paid(
+  p_order_id text, p_order_name text, p_email text, p_name text,
+  p_hours integer, p_amount numeric, p_currency text, p_paid_at timestamptz
+) returns public.bookings language plpgsql set search_path = '' as $$
+declare
+  b public.bookings;
+begin
+  insert into public.bookings (shopify_order_id, order_name, customer_email, customer_name, hours, amount, currency, paid_at)
+  values (p_order_id, p_order_name, lower(trim(p_email)), nullif(trim(p_name), ''), p_hours, p_amount,
+          coalesce(nullif(p_currency, ''), 'USD'), coalesce(p_paid_at, now()))
+  on conflict (shopify_order_id) do nothing
+  returning * into b;
+  if found then
+    insert into public.booking_events (booking_id, status, actor, note)
+    values (b.id, 'paid', 'system', 'Paid in Shopify, order ' || p_order_name);
+    return b;
+  end if;
+  select * into b from public.bookings where shopify_order_id = p_order_id;
+  return b;
+end $$;
+
+-- The customer suggests one to three times, each at least 24 hours ahead and within 60 days. They
+-- can change them until FAYFORT confirms one.
+create or replace function public.booking_propose(
+  p_id uuid, p_times timestamptz[], p_timezone text, p_notes text
+) returns public.bookings language plpgsql set search_path = '' as $$
+declare
+  b public.bookings;
+  t timestamptz;
+begin
+  select * into b from public.bookings where id = p_id for update;
+  if not found then
+    raise exception 'Booking not found';
+  end if;
+  if b.status not in ('paid', 'proposed') then
+    raise exception 'This session is already %: times can no longer be changed here.', b.status;
+  end if;
+  if coalesce(array_length(p_times, 1), 0) not between 1 and 3 then
+    raise exception 'Suggest between one and three times.';
+  end if;
+  foreach t in array p_times loop
+    if t < now() + interval '24 hours' then
+      raise exception 'Each time needs to be at least 24 hours from now.';
+    end if;
+    if t > now() + interval '60 days' then
+      raise exception 'Each time needs to be within the next 60 days.';
+    end if;
+  end loop;
+  if p_timezone is not null and not exists (select 1 from pg_catalog.pg_timezone_names where name = p_timezone) then
+    raise exception 'Unknown time zone: %', p_timezone;
+  end if;
+
+  update public.bookings
+  set status = 'proposed',
+      proposed_times = (select array_agg(distinct x order by x) from unnest(p_times) x),
+      customer_timezone = coalesce(p_timezone, customer_timezone),
+      customer_notes = nullif(left(trim(coalesce(p_notes, '')), 2000), '')
+  where id = p_id
+  returning * into b;
+  insert into public.booking_events (booking_id, status, actor, note)
+  values (p_id, 'proposed', 'customer',
+          case when array_length(b.proposed_times, 1) = 1 then 'Suggested 1 time' else 'Suggested ' || array_length(b.proposed_times, 1) || ' times' end);
+  return b;
+end $$;
+
+-- FAYFORT confirms a time (one of the customer's or another agreed with them) and the meeting
+-- link. Also used to move a session that is already scheduled.
+create or replace function public.booking_schedule(
+  p_id uuid, p_start timestamptz, p_meeting_url text, p_note text
+) returns public.bookings language plpgsql set search_path = '' as $$
+declare
+  b public.bookings;
+  moved boolean;
+begin
+  select * into b from public.bookings where id = p_id for update;
+  if not found then
+    raise exception 'Booking not found';
+  end if;
+  if b.status not in ('paid', 'proposed', 'scheduled') then
+    raise exception 'A % session can''t be scheduled.', b.status;
+  end if;
+  if p_start is null then
+    raise exception 'Choose a start time.';
+  end if;
+  if p_meeting_url is null or p_meeting_url !~ '^https://[^\s]+$' then
+    raise exception 'Add the meeting link, starting with https://';
+  end if;
+  moved := b.status = 'scheduled';
+
+  update public.bookings
+  set status = 'scheduled', scheduled_start = p_start, meeting_url = p_meeting_url
+  where id = p_id
+  returning * into b;
+  insert into public.booking_events (booking_id, status, actor, note)
+  values (p_id, 'scheduled', 'staff',
+          case when moved then 'Moved to ' else 'Confirmed for ' end || public.booking_china_time(p_start)
+          || coalesce('. ' || nullif(trim(p_note), ''), ''));
+  return b;
+end $$;
+
+create or replace function public.booking_complete(p_id uuid, p_note text)
+returns public.bookings language plpgsql set search_path = '' as $$
+declare
+  b public.bookings;
+begin
+  select * into b from public.bookings where id = p_id for update;
+  if not found then
+    raise exception 'Booking not found';
+  end if;
+  if b.status <> 'scheduled' then
+    raise exception 'Only a scheduled session can be completed; this one is %.', b.status;
+  end if;
+  update public.bookings set status = 'completed', completed_at = now() where id = p_id returning * into b;
+  insert into public.booking_events (booking_id, status, actor, note)
+  values (p_id, 'completed', 'staff', coalesce(nullif(trim(p_note), ''), 'Session held'));
+  return b;
+end $$;
+
+-- By FAYFORT, or by the system when Shopify shows the order refunded or cancelled.
+create or replace function public.booking_cancel(p_id uuid, p_actor text, p_note text)
+returns public.bookings language plpgsql set search_path = '' as $$
+declare
+  b public.bookings;
+begin
+  select * into b from public.bookings where id = p_id for update;
+  if not found then
+    raise exception 'Booking not found';
+  end if;
+  if b.status in ('completed', 'cancelled') then
+    raise exception 'This session is already %.', b.status;
+  end if;
+  if p_actor not in ('staff', 'system') then
+    raise exception 'Only FAYFORT can cancel a session.';
+  end if;
+  update public.bookings set status = 'cancelled', cancelled_at = now() where id = p_id returning * into b;
+  insert into public.booking_events (booking_id, status, actor, note)
+  values (p_id, 'cancelled', p_actor, coalesce(nullif(trim(p_note), ''), 'Cancelled'));
+  return b;
+end $$;
 
 -- Access. Start from nothing for the browser roles, then grant back only what customers need.
 do $$
@@ -332,6 +525,17 @@ begin
     execute format('revoke execute on function %s from public, anon, authenticated', f.sig);
   end loop;
 end $$;
+
+-- Bookings are server-side only: the secret key's role works them; no browser role gets anything.
+grant select, insert, update, delete on public.bookings, public.booking_events to service_role;
+grant execute on function
+  public.booking_china_time(timestamptz),
+  public.booking_record_paid(text, text, text, text, integer, numeric, text, timestamptz),
+  public.booking_propose(uuid, timestamptz[], text, text),
+  public.booking_schedule(uuid, timestamptz, text, text),
+  public.booking_complete(uuid, text),
+  public.booking_cancel(uuid, text, text)
+to service_role;
 
 -- Live updates on the customer's dashboard (row-level security still applies to them).
 do $$

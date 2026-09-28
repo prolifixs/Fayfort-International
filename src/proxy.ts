@@ -29,8 +29,13 @@ const ENQUIRY_AUTH_PATHS = [
 const ENQUIRY_ACCOUNT_PATHS = ['/catalog', '/dashboard', '/dashboard/requests', '/dashboard/notifications']
 const ENQUIRY_ACCOUNT_PREFIXES = ['/catalog/', '/dashboard/requests/']
 
+// /book is the consultation booking flow: public, and it never needs a site account (customers
+// prove a booking is theirs with their Shopify order number and email, or a signed link).
 const isPublicSitePath = (pathname: string) =>
-  PUBLIC_SITE_PATHS.includes(pathname) || pathname.startsWith('/ebook/landed/')
+  PUBLIC_SITE_PATHS.includes(pathname) ||
+  pathname.startsWith('/ebook/landed/') ||
+  pathname === '/book' ||
+  pathname.startsWith('/book/')
 
 // Build output, public images, and single-segment files in /public (favicon, robots.txt).
 const isStaticAsset = (pathname: string) =>

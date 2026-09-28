@@ -146,6 +146,7 @@ export default function ServicesPage() {
           <p>Tell us the product, the quantity and the destination. That’s enough for a first answer.</p>
           <div className="cta-actions">
             <a className="button button-primary" href={SOURCING_ENQUIRY_URL}>Email {SUPPORT_EMAIL}</a>
+            <Link className="text-button" href="/book">Rather talk it through? Book a video consultation</Link>
             <Link className="text-button" href="/ebook/landed">Prefer to go yourself? See LANDED</Link>
           </div>
         </section>

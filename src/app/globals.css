@@ -516,3 +516,73 @@ h1 em, h2 em { color: var(--pink); font-weight: 400; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+/* Booking a video consultation (/book): options, forms and the booking tracker. */
+.text-link { border-bottom: 1px solid currentColor; color: var(--magenta); }
+.booking-heading { font-size: clamp(28px, 3vw, 38px); letter-spacing: -.02em; line-height: 1.1; margin: 52px 0 12px; }
+.booking-note { color: var(--muted); font-size: 14px; line-height: 1.65; margin: 0 0 18px; }
+.booking-aside { margin-top: 28px; }
+.button[aria-disabled='true'] { opacity: .45; pointer-events: none; }
+button.button { border: 0; cursor: pointer; }
+button.button:disabled { cursor: progress; opacity: .7; }
+button.text-button { background: none; border-width: 0 0 1px; cursor: pointer; padding-inline: 0; }
+
+.booking-form { display: grid; gap: 18px; max-width: 540px; }
+.booking-times { display: grid; gap: 14px; }
+.booking-field { display: grid; gap: 6px; }
+.booking-field > span { font-size: 12px; font-weight: 750; }
+.booking-field small { color: var(--muted); font-size: 12px; }
+.booking-field input, .booking-field textarea { background: white; border: 1px solid var(--line); border-radius: 0; color: var(--ink); font: inherit; font-size: 16px; min-height: 48px; padding: 10px 12px; width: 100%; }
+.booking-field textarea { min-height: 112px; resize: vertical; }
+.booking-field input:focus-visible, .booking-field textarea:focus-visible { border-color: var(--blue); outline: 2px solid var(--blue); outline-offset: 0; }
+.booking-time-row { align-items: center; display: flex; gap: 14px; }
+.booking-time-row input { flex: 1; }
+.booking-error, .booking-success { font-size: 14px; line-height: 1.55; margin: 0; padding: 12px 14px; }
+.booking-error { background: var(--blush); border-left: 3px solid var(--pink); }
+.booking-success { background: var(--mist); border-left: 3px solid var(--blue); }
+
+.booking-track { list-style: none; margin: 0 0 44px; padding: 0; }
+.booking-track li { border-left: 2px solid var(--line); padding: 0 0 22px 24px; position: relative; }
+.booking-track li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.booking-track li::before { background: var(--paper); border: 2px solid var(--line); border-radius: 50%; content: ''; height: 14px; left: -8px; position: absolute; top: 3px; width: 14px; }
+.booking-track li.is-done::before { background: var(--pink); border-color: var(--pink); }
+.booking-track li.is-done { border-left-color: var(--pink); }
+.booking-track li.is-current::before { border-color: var(--pink); }
+.booking-track strong { display: block; font-size: 16px; }
+.booking-track li:not(.is-done):not(.is-current) strong { color: var(--muted); font-weight: 500; }
+.booking-track p { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
+.booking-confirmed { background: white; border: 1px solid var(--line); padding: 28px; }
+.booking-when { font-family: var(--serif); font-size: clamp(24px, 3vw, 32px); line-height: 1.2; margin: 8px 0 8px; }
+.booking-confirmed .cta-actions { margin: 22px 0; }
+.booking-confirmed .text-button { border-color: var(--ink); }
+.booking-proposed { color: var(--ink); font-size: 16px; line-height: 1.7; margin: 0 0 24px; padding-left: 20px; }
+.booking-proposed span { color: var(--muted); font-size: 13px; }
+
+/* The price picker on /book: lengths on the left, the chosen session and its pay button on the right. */
+.price-heading { align-items: baseline; display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 52px; }
+.price-heading .booking-heading { margin: 0 0 12px; }
+.price-deal { background: var(--blush); color: var(--magenta); font-size: 11px; font-weight: 800; letter-spacing: .12em; margin: 0; padding: 7px 11px; text-transform: uppercase; }
+.price-picker { align-items: start; display: grid; gap: 20px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin: 26px 0 8px; }
+.price-options { border: 0; display: grid; gap: 10px; margin: 0; min-width: 0; padding: 0; }
+.price-option { align-items: center; background: white; border: 1px solid var(--line); cursor: pointer; display: grid; gap: 2px 14px; grid-template-areas: "length save total" "rate save total"; grid-template-columns: 1fr auto auto; padding: 16px 20px; position: relative; transition: border-color .15s, background .15s; }
+.price-option:hover { border-color: rgba(2, 20, 78, .4); }
+.price-option input { opacity: 0; pointer-events: none; position: absolute; }
+.price-option:has(input:focus-visible) { outline: 3px solid var(--blue); outline-offset: 2px; }
+.price-option.is-selected { background: var(--blush); border-color: var(--pink); box-shadow: inset 4px 0 0 var(--pink); }
+.price-option-length { font-family: var(--serif); font-size: 22px; grid-area: length; line-height: 1.2; }
+.price-option-rate { color: var(--muted); font-size: 13px; grid-area: rate; }
+.price-option-save { background: var(--ink); color: var(--paper); font-size: 10px; font-weight: 800; grid-area: save; letter-spacing: .1em; padding: 5px 8px; text-transform: uppercase; white-space: nowrap; }
+.price-option-total { font-size: 24px; font-weight: 750; grid-area: total; letter-spacing: -.02em; min-width: 72px; text-align: right; }
+.price-summary { background: var(--ink); color: var(--paper); display: grid; gap: 10px; padding: 28px; position: sticky; top: 100px; }
+.price-summary-label { color: var(--pink-light); font-size: 10px; font-weight: 800; letter-spacing: .15em; margin: 0; text-transform: uppercase; }
+.price-summary-length { font-family: var(--serif); font-size: 20px; line-height: 1.3; margin: 0; }
+.price-summary-total { align-items: baseline; display: flex; flex-wrap: wrap; font-size: clamp(48px, 6vw, 64px); font-weight: 750; gap: 4px 14px; letter-spacing: -.04em; line-height: 1; margin: 8px 0 0; }
+.price-summary-total s { color: var(--on-dark-muted); font-size: 22px; font-weight: 500; letter-spacing: 0; }
+.price-summary-detail { color: var(--on-dark); font-size: 14px; margin: 0 0 12px; }
+.price-summary .button { gap: 12px; white-space: nowrap; }
+.price-summary-note { color: var(--on-dark-muted); font-size: 12px; line-height: 1.55; margin: 4px 0 0; }
+@media (max-width: 760px) {
+  .price-picker { grid-template-columns: 1fr; }
+  .price-summary { position: static; }
+  .price-option { padding: 14px 16px; }
+}

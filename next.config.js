@@ -9,7 +9,9 @@ const SHOPIFY_STORE = 'https://8kjjz9-ei.myshopify.com'
 // also needs 'unsafe-eval' for fast refresh.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://sdks.shopifycdn.com https://js.stripe.com`,
+  // In development, Vercel Analytics loads its debug script from its CDN; in production it is served
+  // from this site under /_vercel.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval' https://va.vercel-scripts.com" : ''} https://sdks.shopifycdn.com https://js.stripe.com`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https://cdn.shopify.com https://${SUPABASE_HOST} https://img.youtube.com https://i.vimeocdn.com`,
   "font-src 'self' data:",
